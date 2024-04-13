@@ -88,6 +88,27 @@ impl Vendor {
         }
     }
 
+    pub fn name(&self) -> &'static str {
+        match self {
+            Vendor::AMD => "AMD",
+            Vendor::ImgTec => "ImgTec",
+            Vendor::Apple => "Apple",
+            Vendor::Nvidia => "Nvidia",
+            Vendor::ARM => "ARM",
+            Vendor::Google => "Google",
+            Vendor::Qualcomm => "Qualcomm",
+            Vendor::Intel => "Intel",
+            Vendor::Unknown => "Unknown",
+            Vendor::VIV => "VIV",
+            Vendor::VSI => "VSI",
+            Vendor::Kazan => "Kazan",
+            Vendor::Codeplay => "Codeplay",
+            Vendor::Mesa => "Mesa",
+            Vendor::Pocl => "Pocl",
+            Vendor::MobileEye => "MobileEye",
+        }
+    }
+
     pub fn from_vendor_id(id: u32) -> Option<Self> {
         match id {
             0x1002 => Some(Vendor::AMD),
@@ -114,16 +135,5 @@ impl Vendor {
 impl From<Vendor> for u32 {
     fn from(v: Vendor) -> Self {
         v as u32
-    }
-}
-
-pub(crate) fn device_type_to_name(id: i32) -> &'static str {
-    match id {
-        0 => "Other",
-        1 => "Integrated GPU",
-        2 => "Discrete GPU",
-        3 => "Virtual GPU",
-        4 => "CPU",
-        _ => "Unknown",
     }
 }

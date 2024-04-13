@@ -1,56 +1,100 @@
 pub mod ascii_art;
+pub mod device;
 pub mod vendor;
 
-use ash::{vk::PhysicalDeviceProperties, *};
+use ash::*;
+use device::Device;
 use std::str;
-use vendor::{device_type_to_name, Vendor};
+use vendor::Vendor;
 
-pub fn fetch_device(instance: &ash::Instance, device: ash::vk::PhysicalDevice) -> bool {
+pub fn fetch_device(instance: &Instance, device: vk::PhysicalDevice) -> bool {
     let properties = unsafe { instance.get_physical_device_properties(device) };
+    let mut properties2 = vk::PhysicalDeviceProperties2::default();
+    unsafe { instance.get_physical_device_properties2(device, &mut properties2) }
+
+    // println!("device raw: {}", device.as_raw());
 
     let vendor = Vendor::from_vendor_id(properties.vendor_id)
         .expect(&format!("unknown vendor: {}", properties.vendor_id));
 
     let art = vendor.get_ascii_art();
 
-    let info = get_device_info(&instance, device, properties);
+    let device = Device::new(instance, device);
+
+    let info = get_device_info(device);
 
     // iterate over art or info whichever is longer
     let empty = "".to_string();
     for i in 0..art.len().max(info.len()) {
         let art_line = art.get(i).unwrap_or(&empty);
         let info_line = info.get(i).unwrap_or(&empty);
-        println!("{} {}", art_line, info_line);
+        println!(" {} {}", art_line, info_line);
     }
 
-    // println!("{}: {}", properties.vendor_id, properties.device_id);
+    // println!(
+    //     "Device ID{}: Device Type {}",
+    //     properties.device_id,
+    //     properties.device_type.as_raw()
+    // );
 
     true
 }
 
 const BOLD: &str = "\x1B[1m";
 const RESET: &str = "\x1B[0m";
+const ALIGNMENT: &str = "    ";
 
-fn get_device_info(
-    _instance: &&Instance,
-    _device: vk::PhysicalDevice,
-    properties: PhysicalDeviceProperties,
-) -> Vec<String> {
+fn get_device_info(device: Device) -> Vec<String> {
     let mut output: Vec<String> = Vec::new();
 
     output.push(format!(
-        " {}{} : {}{}",
+        "{}{} : {}{}",
         BOLD,
-        &properties.device_name_as_c_str().unwrap().to_str().unwrap(),
+        device.device_name,
         RESET,
-        device_type_to_name(properties.device_type.as_raw())
+        device.device_type.name()
     ));
+    /* 	Fetch.push_back(fmt::format(
+        "    Device: \033[37m{:04x}\033[0m : \033[37m{:04x}\033[0m ({})",
+        DeviceProperties.properties.deviceID,
+        DeviceProperties.properties.vendorID,
+        Vulkan::Util::VendorName(static_cast<Vulkan::Util::VendorID>(
+            DeviceProperties.properties.vendorID
+        ))
+    )); */
+    output.push(format!(
+        "{}Device: {} : {} ({})",
+        ALIGNMENT,
+        device.device_id,
+        device.vendor_id,
+        device.vendor.name(),
+    ));
+
+    output.push(format!("{}Driver: {} : {} {}", ALIGNMENT, "", "", ""));
+
+    output.push(format!("{}API: {}", ALIGNMENT, device.api_version,));
 
     output
 }
 
 pub fn iterate_devices() {
-    let entry = unsafe { ash::Entry::load().unwrap() };
+    /*
+    #ifdef _WIN32
+    #define NOMINMAX
+    #include <Windows.h>
+    // Statically enables "ENABLE_VIRTUAL_TERMINAL_PROCESSING" for the terminal
+    // at runtime to allow for unix-style escape sequences.
+    static const bool _WndV100Enabled = []() -> bool {
+        const auto Handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD      ConsoleMode;
+        GetConsoleMode(Handle, &ConsoleMode);
+        SetConsoleMode(Handle, ConsoleMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        GetConsoleMode(Handle, &ConsoleMode);
+        return ConsoleMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    }();
+    #endif
+     */
+    let entry = unsafe { Entry::load().unwrap() };
     let create_info = vk::InstanceCreateInfo::default();
     let instance = unsafe { entry.create_instance(&create_info, None).unwrap() };
     let devices = unsafe { instance.enumerate_physical_devices().unwrap() };
