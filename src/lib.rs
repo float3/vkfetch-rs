@@ -22,13 +22,14 @@ pub fn fetch_device(instance: &Instance, device: vk::PhysicalDevice) {
 
     let info = get_device_info(device);
 
-    // iterate over art or info whichever is longer
     let empty = "".to_string();
     for i in 0..art.len().max(info.len()) {
         let art_line = art.get(i).unwrap_or(&empty);
         let info_line = info.get(i).unwrap_or(&empty);
         println!(" {} {}", art_line, info_line);
     }
+
+    println!();
 }
 
 const BOLD: &str = "\x1B[1m";
@@ -62,8 +63,6 @@ fn get_device_info(device: Device) -> Vec<String> {
 }
 
 pub fn iterate_devices() {
-    #[cfg(target_os = "windows")]
-    windows_terminal::enable_virtual_terminal_processing();
     let entry = unsafe { Entry::load().unwrap() };
     let create_info = vk::InstanceCreateInfo::default();
     let instance = unsafe { entry.create_instance(&create_info, None).unwrap() };
