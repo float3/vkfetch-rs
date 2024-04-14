@@ -2,12 +2,13 @@
 authors = ["hill <hill@hilll.dev>"]
 description = "vkfetch-rs is a fetch-program that displays basic information about your vulkan-compatible graphic card(s)!"
 edition = "2021"
-keywords = ["vulkan", "neofetch"]
+keywords = ["vulkan", "neofetch", "gpu", "fetch"]
 license = "AGPL-3.0"
 repository = "https://github.com/float3/vkfetch-rs"
 version = "1.0.0"
 name = "vkfetch-rs"
 categories = ["command-line-utilities"]
+readme = "README.md"
 
 [dependencies]
 ash = "0.38.0"

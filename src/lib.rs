@@ -4,7 +4,7 @@ pub mod device;
 pub mod vendor;
 
 use ash::*;
-use device::Device;
+use device::PhysicalDevice;
 use std::str;
 use vendor::Vendor;
 
@@ -18,7 +18,7 @@ pub fn fetch_device(instance: &Instance, device: vk::PhysicalDevice) {
 
     let art = vendor.get_ascii_art();
 
-    let device = Device::new(instance, device);
+    let device = PhysicalDevice::new(instance, device);
 
     let info = get_device_info(device);
 
@@ -36,7 +36,7 @@ const BOLD: &str = "\x1B[1m";
 const RESET: &str = "\x1B[0m";
 const ALIGNMENT: &str = "    ";
 
-fn get_device_info(device: Device) -> Vec<String> {
+fn get_device_info(device: PhysicalDevice) -> Vec<String> {
     let mut output: Vec<String> = Vec::new();
 
     output.push(format!(

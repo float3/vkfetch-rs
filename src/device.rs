@@ -5,7 +5,7 @@ use ash::{
 
 use crate::vendor::Vendor;
 
-pub struct Device {
+pub struct PhysicalDevice {
     pub vendor: Vendor,
     pub device_name: String, // :
     pub device_type: DeviceType,
@@ -34,33 +34,80 @@ struct GPUCharacteristics {
     wavefront_size: u32,
 }
 
-impl Device {
-    pub fn new(instance: &Instance, device: vk::PhysicalDevice) -> Self {
-        let properties = unsafe { instance.get_physical_device_properties(device) };
-        let mut properties2 = vk::PhysicalDeviceProperties2::default();
-        unsafe { instance.get_physical_device_properties2(device, &mut properties2) }
+impl PhysicalDevice {
+    pub fn new(instance: &Instance, physical_device: vk::PhysicalDevice) -> Self {
+        let physical_device_properties: vk::PhysicalDeviceProperties =
+            unsafe { instance.get_physical_device_properties(physical_device) };
 
-        let vendor = Vendor::from_vendor_id(properties.vendor_id).unwrap();
-        let device_name = properties.device_name_as_c_str().unwrap().to_str().unwrap();
-        let device_type = DeviceType::from(properties.device_type.as_raw());
+        let mut driver_properties: vk::PhysicalDeviceDriverProperties =
+            vk::PhysicalDeviceDriverProperties::default();
 
-        let device_id = properties.device_id;
-        let vendor_id = properties.vendor_id;
+        let mut properties2: vk::PhysicalDeviceProperties2 =
+            vk::PhysicalDeviceProperties2::default().push_next(&mut driver_properties);
 
-        let api_version = decode_version_number(properties.api_version);
+        let _: () = unsafe {
+            instance.get_physical_device_properties2(physical_device, &mut properties2);
+        };
 
-        Device {
+        let vendor_id = physical_device_properties.vendor_id;
+
+        let vendor = Vendor::from_vendor_id(vendor_id).unwrap();
+
+        let device_name = physical_device_properties
+            .device_name_as_c_str()
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+        let device_type = DeviceType::from(physical_device_properties.device_type.as_raw());
+
+        let device_id = physical_device_properties.device_id;
+
+        let api_version = decode_version_number(physical_device_properties.api_version);
+
+        let driver_name = driver_properties
+            .driver_name_as_c_str()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
+        let driver_info = driver_properties
+            .driver_info_as_c_str()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
+        // asdtest(driver_properties);
+
+        PhysicalDevice {
             vendor,
             device_name: device_name.to_string(),
             device_type,
             device_id,
             vendor_id,
-            driver_name: "".to_string(),
-            driver_info: "".to_string(),
+            driver_name,
+            driver_info,
             api_version,
         }
     }
 }
+
+// fn asdtest(driver_properties: vk::PhysicalDeviceDriverProperties<'static>) {
+//     println!(
+//         "Driver Name: {:?}",
+//         driver_properties.driver_name_as_c_str().unwrap()
+//     );
+
+//     println!(
+//         "Driver Info: {:?}",
+//         driver_properties.driver_info_as_c_str().unwrap()
+//     );
+
+//     println!(
+//         "Conformance Version: {:?}",
+//         driver_properties.conformance_version
+//     );
+// }
 
 pub enum DeviceType {
     Other = 0,
