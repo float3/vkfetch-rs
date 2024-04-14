@@ -23,6 +23,7 @@ pub struct Device {
     // pub characteristics: Option<GPUCharacteristics>,
 }
 
+#[allow(dead_code)]
 struct GPUCharacteristics {
     compute_units: u32,
     shader_engines: u32,
@@ -49,14 +50,14 @@ impl Device {
         let api_version = decode_version_number(properties.api_version);
 
         Device {
-            vendor: vendor,
+            vendor,
             device_name: device_name.to_string(),
-            device_type: device_type,
-            device_id: device_id,
-            vendor_id: vendor_id,
+            device_type,
+            device_id,
+            vendor_id,
             driver_name: "".to_string(),
             driver_info: "".to_string(),
-            api_version: api_version,
+            api_version,
         }
     }
 }

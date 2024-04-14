@@ -19,15 +19,6 @@ pub enum Vendor {
     MobileEye = 0x10007,
 }
 
-const RED: &str = "\x1B[2;31m";
-const LIGHT_RED: &str = "\x1B[31m";
-const WHITE: &str = "\x1B[37m";
-const BLUE: &str = "\x1B[34m";
-const GREEN: &str = "\x1B[32m";
-const YELLOW: &str = "\x1B[33m";
-const TURQUOISE: &str = "\x1B[36m";
-const AMD_GREEN: &str = "\x1B[2;32m";
-const NVIDIA_GREEN: &str = "\x1B[92m";
 const BLOCK: &str = "\x1B[7m \x1B[0m";
 
 impl Vendor {
@@ -67,14 +58,14 @@ impl Vendor {
         modified_art
     }
 
-    pub const fn get_styles(&self) -> [&str; 4] {
+    pub const fn get_styles(&self) -> [&str; LUT_SIZE] {
         match self {
-            Vendor::Unknown => [RED, "", "", ""],
-            Vendor::Apple => [WHITE, "", "", ""],
-            Vendor::Google => [LIGHT_RED, BLUE, GREEN, YELLOW],
-            Vendor::Intel => [WHITE, TURQUOISE, "", ""],
-            Vendor::Nvidia => [NVIDIA_GREEN, "", "", ""],
-            Vendor::AMD => [WHITE, AMD_GREEN, "", ""],
+            Vendor::Unknown => UNKOWN_STYLE,
+            Vendor::Apple => APPLE_STYLE,
+            Vendor::Google => GOOGLE_STYLE,
+            Vendor::Intel => INTEL_STYLE,
+            Vendor::Nvidia => NVIDIA_STYLE,
+            Vendor::AMD => AMD_STYLE,
             Vendor::ImgTec => todo!(),
             Vendor::ARM => todo!(),
             Vendor::Qualcomm => todo!(),
@@ -82,7 +73,7 @@ impl Vendor {
             Vendor::VSI => todo!(),
             Vendor::Kazan => todo!(),
             Vendor::Codeplay => todo!(),
-            Vendor::Mesa => ["", "", "", ""],
+            Vendor::Mesa => MESA_STYLE,
             Vendor::Pocl => todo!(),
             Vendor::MobileEye => todo!(),
         }

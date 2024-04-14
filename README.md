@@ -6,8 +6,8 @@ I rewrote it because I wanted to have vkfetch on an easy to manage package manag
 # Goals
 - [ ] support all the features of the original vkfetch
 - [ ] support other gpus/vendors that aren't part of the original vkfetch
-- [ ] use ANSI escape codes that are compatible with all terminals
-- [ ] add background to ASCII art so single color logos can be seen on terminals where the background is the same colour
+- [x] use ANSI escape codes that are compatible with all terminals
+- [x] add background to ASCII art so single color logos can be seen on terminals where the background is the same colour
 - [ ] add as much info as possible
 
 # vkfetch-rs
