@@ -45,7 +45,7 @@ impl PhysicalDevice {
         let mut properties2: vk::PhysicalDeviceProperties2 =
             vk::PhysicalDeviceProperties2::default().push_next(&mut driver_properties);
 
-        let _: () = unsafe {
+        unsafe {
             instance.get_physical_device_properties2(physical_device, &mut properties2);
         };
 
@@ -53,11 +53,8 @@ impl PhysicalDevice {
 
         let vendor = Vendor::from_vendor_id(vendor_id).unwrap();
 
-        let device_name = physical_device_properties
-            .device_name_as_c_str()
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let device_name =
+            cstring_to_string(physical_device_properties.device_name_as_c_str().unwrap());
 
         let device_type = DeviceType::from(physical_device_properties.device_type.as_raw());
 
@@ -65,23 +62,13 @@ impl PhysicalDevice {
 
         let api_version = decode_version_number(physical_device_properties.api_version);
 
-        let driver_name = driver_properties
-            .driver_name_as_c_str()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
+        let driver_name = cstring_to_string(driver_properties.driver_name_as_c_str().unwrap());
 
-        let driver_info = driver_properties
-            .driver_info_as_c_str()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-
-        // asdtest(driver_properties);
+        let driver_info = cstring_to_string(driver_properties.driver_info_as_c_str().unwrap());
 
         PhysicalDevice {
             vendor,
-            device_name: device_name.to_string(),
+            device_name,
             device_type,
             device_id,
             vendor_id,
@@ -91,23 +78,6 @@ impl PhysicalDevice {
         }
     }
 }
-
-// fn asdtest(driver_properties: vk::PhysicalDeviceDriverProperties<'static>) {
-//     println!(
-//         "Driver Name: {:?}",
-//         driver_properties.driver_name_as_c_str().unwrap()
-//     );
-
-//     println!(
-//         "Driver Info: {:?}",
-//         driver_properties.driver_info_as_c_str().unwrap()
-//     );
-
-//     println!(
-//         "Conformance Version: {:?}",
-//         driver_properties.conformance_version
-//     );
-// }
 
 pub enum DeviceType {
     Other = 0,
@@ -154,4 +124,8 @@ pub fn decode_version_number(version: u32) -> String {
     let minor = (version >> 12) & 0b1111111111;
     let patch = version & 0b111111111111;
     format!("{}.{}.{}.{}", variant, major, minor, patch)
+}
+
+pub fn cstring_to_string(cstr: &std::ffi::CStr) -> String {
+    cstr.to_string_lossy().to_string()
 }

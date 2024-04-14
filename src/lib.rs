@@ -55,7 +55,10 @@ fn get_device_info(device: PhysicalDevice) -> Vec<String> {
         device.vendor.name(),
     ));
 
-    output.push(format!("{}Driver: {} : {} {}", ALIGNMENT, "", "", ""));
+    output.push(format!(
+        "{}Driver: {} : {}",
+        ALIGNMENT, device.driver_name, device.driver_info
+    ));
 
     output.push(format!("{}API: {}", ALIGNMENT, device.api_version,));
 
@@ -64,10 +67,30 @@ fn get_device_info(device: PhysicalDevice) -> Vec<String> {
 
 pub fn iterate_devices() {
     let entry = unsafe { Entry::load().unwrap() };
-    let create_info = vk::InstanceCreateInfo::default();
+    let appinfo = vk::ApplicationInfo {
+        api_version: vk::API_VERSION_1_3,
+        ..Default::default()
+    };
+
+    let create_info = vk::InstanceCreateInfo::default().application_info(&appinfo);
     let instance = unsafe { entry.create_instance(&create_info, None).unwrap() };
+
     let devices = unsafe { instance.enumerate_physical_devices().unwrap() };
     for device in devices {
+        // let x = unsafe {
+        //     instance
+        //         .enumerate_device_extension_properties(device)
+        //         .unwrap()
+        // };
+        // for x in x {
+        //     println!(
+        //         "{:?}",
+        //         x.extension_name_as_c_str()
+        //             .unwrap()
+        //             .to_string_lossy()
+        //             .to_string()
+        //     );
+        // }
         fetch_device(&instance, device);
     }
 }
