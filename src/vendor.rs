@@ -24,12 +24,13 @@ const BLOCK: &str = "\x1B[7m \x1B[0m";
 impl Vendor {
     pub fn get_ascii_art(&self) -> Vec<String> {
         let art: &[&str] = match self {
-            Vendor::Unknown => UNKNOWN,
             Vendor::Apple => APPLE,
             Vendor::Google => GOOGLE,
             Vendor::Intel => INTEL,
             Vendor::Nvidia => NVIDIA,
             Vendor::AMD => AMD,
+            Vendor::ARM => ARM,
+            Vendor::Mesa => MESA,
             // Vendor::ImgTec => todo!(),
             // Vendor::ARM => todo!(),
             // Vendor::Qualcomm => todo!(),
@@ -40,7 +41,8 @@ impl Vendor {
             // Vendor::Mesa => MESA,
             // Vendor::Pocl => todo!(),
             // Vendor::MobileEye => todo!(),
-            _ => UNKNOWN,
+            Vendor::Unknown => VULKAN,
+            _ => VULKAN,
         };
 
         let styles = self.get_styles();
@@ -61,14 +63,14 @@ impl Vendor {
 
     pub const fn get_styles(&self) -> [&str; LUT_SIZE] {
         match self {
-            Vendor::Unknown => UNKOWN_STYLE,
             Vendor::Apple => APPLE_STYLE,
             Vendor::Google => GOOGLE_STYLE,
             Vendor::Intel => INTEL_STYLE,
             Vendor::Nvidia => NVIDIA_STYLE,
             Vendor::AMD => AMD_STYLE,
+            Vendor::ARM => ARM_STYLE,
+            Vendor::Mesa => MESA_STYLE,
             // Vendor::ImgTec => todo!(),
-            // Vendor::ARM => todo!(),
             // Vendor::Qualcomm => todo!(),
             // Vendor::VIV => todo!(),
             // Vendor::VSI => todo!(),
@@ -77,7 +79,8 @@ impl Vendor {
             // Vendor::Mesa => MESA_STYLE,
             // Vendor::Pocl => todo!(),
             // Vendor::MobileEye => todo!(),
-            _ => UNKOWN_STYLE,
+            Vendor::Unknown => VULKAN_STYLE,
+            _ => VULKAN_STYLE,
         }
     }
 

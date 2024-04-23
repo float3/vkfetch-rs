@@ -18,7 +18,7 @@ pub(crate) const CYAN: &str = "\x1B[36m";
 pub(crate) const WHITE: &str = "\x1B[37m";
 // pub(crate) const BRIGHT_WHITE: &str = "\x1B[97m";
 
-pub(crate) const UNKNOWN: &[&str] = &[
+pub(crate) const VULKAN: &[&str] = &[
     r#"          ################                     "#,
     r#"      ##########################               "#,
     r#"    #############         ##########           "#,
@@ -34,7 +34,7 @@ pub(crate) const UNKNOWN: &[&str] = &[
     r#"                   ######                      "#,
 ];
 
-pub(crate) const UNKOWN_STYLE: [&str; LUT_SIZE] = [RED, "", "", "", BLACK];
+pub(crate) const VULKAN_STYLE: [&str; LUT_SIZE] = [RED, "", "", "", BLACK];
 
 pub(crate) const APPLE: &[&str] = &[
     r#"                          ###                  "#,
@@ -120,6 +120,23 @@ pub(crate) const AMD: &[&str] = &[
 
 pub(crate) const AMD_STYLE: [&str; LUT_SIZE] = [WHITE, GREEN, "", "", BLACK];
 
-pub(crate) const MESA: &[&str] = &[];
+pub(crate) const ARM: &[&str] = &[
+    r#"          ###     ########   ###      ###      "#,
+    r#"         #####    ###   ###  #####  #####      "#,
+    r#"        ### ###   ########   ############      "#,
+    r#"       ###   ###  ### ####   ###  ##  ###      "#,
+    r#"      ########### ###   ###  ###      ###      "#,
+    r#"      ###     ### ###    ### ###      ###      "#,
+];
 
-pub(crate) const MESA_STYLE: [&str; LUT_SIZE] = ["", "", "", "", BLACK];
+pub(crate) const ARM_STYLE: [&str; LUT_SIZE] = [RED, "", "", "", BLACK];
+
+pub(crate) const MESA: &[&str] = &[
+    r#"   ###      ### $$$$$$$$ %%%%%%%%     &&&      "#,
+    r#"   #####  ##### $$$      %%          &&&&&     "#,
+    r#"   ############ $$$$$$$$ %%%%%%%%   &&& &&&    "#,
+    r#"   ###  ##  ### $$$            %%  &&&&&&&&&   "#,
+    r#"   ###      ### $$$$$$$$ %%%%%%%% &&&     &&&  "#,
+];
+
+pub(crate) const MESA_STYLE: [&str; LUT_SIZE] = [BLUE, RED, GREEN, WHITE, BLACK];
