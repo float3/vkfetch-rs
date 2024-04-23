@@ -24,23 +24,13 @@ const BLOCK: &str = "\x1B[7m \x1B[0m";
 impl Vendor {
     pub fn get_ascii_art(&self) -> Vec<String> {
         let art: &[&str] = match self {
+            Vendor::AMD => AMD,
             Vendor::Apple => APPLE,
+            Vendor::ARM => ARM,
             Vendor::Google => GOOGLE,
             Vendor::Intel => INTEL,
-            Vendor::Nvidia => NVIDIA,
-            Vendor::AMD => AMD,
-            Vendor::ARM => ARM,
             Vendor::Mesa => MESA,
-            // Vendor::ImgTec => todo!(),
-            // Vendor::ARM => todo!(),
-            // Vendor::Qualcomm => todo!(),
-            // Vendor::VIV => todo!(),
-            // Vendor::VSI => todo!(),
-            // Vendor::Kazan => todo!(),
-            // Vendor::Codeplay => todo!(),
-            // Vendor::Mesa => MESA,
-            // Vendor::Pocl => todo!(),
-            // Vendor::MobileEye => todo!(),
+            Vendor::Nvidia => NVIDIA,
             Vendor::Unknown => VULKAN,
             _ => VULKAN,
         };
@@ -63,22 +53,13 @@ impl Vendor {
 
     pub const fn get_styles(&self) -> [&str; LUT_SIZE] {
         match self {
+            Vendor::AMD => AMD_STYLE,
             Vendor::Apple => APPLE_STYLE,
+            Vendor::ARM => ARM_STYLE,
             Vendor::Google => GOOGLE_STYLE,
             Vendor::Intel => INTEL_STYLE,
-            Vendor::Nvidia => NVIDIA_STYLE,
-            Vendor::AMD => AMD_STYLE,
-            Vendor::ARM => ARM_STYLE,
             Vendor::Mesa => MESA_STYLE,
-            // Vendor::ImgTec => todo!(),
-            // Vendor::Qualcomm => todo!(),
-            // Vendor::VIV => todo!(),
-            // Vendor::VSI => todo!(),
-            // Vendor::Kazan => todo!(),
-            // Vendor::Codeplay => todo!(),
-            // Vendor::Mesa => MESA_STYLE,
-            // Vendor::Pocl => todo!(),
-            // Vendor::MobileEye => todo!(),
+            Vendor::Nvidia => NVIDIA_STYLE,
             Vendor::Unknown => VULKAN_STYLE,
             _ => VULKAN_STYLE,
         }
@@ -87,21 +68,21 @@ impl Vendor {
     pub fn name(&self) -> &'static str {
         match self {
             Vendor::AMD => "AMD",
-            Vendor::ImgTec => "ImgTec",
             Vendor::Apple => "Apple",
-            Vendor::Nvidia => "Nvidia",
             Vendor::ARM => "ARM",
+            Vendor::Codeplay => "Codeplay",
             Vendor::Google => "Google",
-            Vendor::Qualcomm => "Qualcomm",
+            Vendor::ImgTec => "ImgTec",
             Vendor::Intel => "Intel",
+            Vendor::Kazan => "Kazan",
+            Vendor::Mesa => "Mesa",
+            Vendor::MobileEye => "MobileEye",
+            Vendor::Nvidia => "Nvidia",
+            Vendor::Pocl => "Pocl",
+            Vendor::Qualcomm => "Qualcomm",
             Vendor::Unknown => "Unknown",
             Vendor::VIV => "VIV",
             Vendor::VSI => "VSI",
-            Vendor::Kazan => "Kazan",
-            Vendor::Codeplay => "Codeplay",
-            Vendor::Mesa => "Mesa",
-            Vendor::Pocl => "Pocl",
-            Vendor::MobileEye => "MobileEye",
         }
     }
 

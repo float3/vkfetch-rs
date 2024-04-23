@@ -7,15 +7,12 @@ use crate::vendor::Vendor;
 
 pub struct PhysicalDevice {
     pub vendor: Vendor,
-    pub device_name: String, // :
+    pub device_name: String,
     pub device_type: DeviceType,
-    // Device :
-    pub device_id: u32, // :
-    pub vendor_id: u32, // (VendorName)
-    // Driver:
-    pub driver_name: String, // :
+    pub device_id: u32,
+    pub vendor_id: u32,
+    pub driver_name: String,
     pub driver_info: String,
-    // API:
     pub api_version: String,
     // VRAM:
     // pub heapbudget: u64,
