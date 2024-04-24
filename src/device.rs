@@ -48,7 +48,13 @@ impl PhysicalDevice {
 
         let vendor_id = physical_device_properties.vendor_id;
 
-        let vendor = Vendor::from_vendor_id(vendor_id).unwrap();
+        let vendor = match Vendor::from_vendor_id(vendor_id) {
+            Some(vendor) => vendor,
+            None => {
+                eprintln!("Unknown vendor: {}", vendor_id);
+                panic!();
+            }
+        };
 
         let device_name =
             cstring_to_string(physical_device_properties.device_name_as_c_str().unwrap());

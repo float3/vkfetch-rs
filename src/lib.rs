@@ -66,31 +66,47 @@ fn get_device_info(device: PhysicalDevice) -> Vec<String> {
 }
 
 pub fn iterate_devices() {
-    let entry = unsafe { Entry::load().unwrap() };
-    let appinfo = vk::ApplicationInfo {
-        api_version: vk::API_VERSION_1_3,
-        ..Default::default()
+    let entry = match unsafe { Entry::load() } {
+        Ok(entry) => entry,
+        Err(e) => {
+            eprintln!("Failed to load entry: {:?}", e);
+            return;
+        }
     };
 
-    let create_info = vk::InstanceCreateInfo::default().application_info(&appinfo);
-    let instance = unsafe { entry.create_instance(&create_info, None).unwrap() };
+    let versions = [
+        vk::API_VERSION_1_3,
+        vk::API_VERSION_1_2,
+        vk::API_VERSION_1_1,
+        vk::API_VERSION_1_0,
+    ];
 
-    let devices = unsafe { instance.enumerate_physical_devices().unwrap() };
-    for device in devices {
-        // let x = unsafe {
-        //     instance
-        //         .enumerate_device_extension_properties(device)
-        //         .unwrap()
-        // };
-        // for x in x {
-        //     println!(
-        //         "{:?}",
-        //         x.extension_name_as_c_str()
-        //             .unwrap()
-        //             .to_string_lossy()
-        //             .to_string()
-        //     );
-        // }
-        fetch_device(&instance, device);
+    for api_version in versions {
+        let app_info = vk::ApplicationInfo {
+            api_version,
+            ..Default::default()
+        };
+        let create_info = vk::InstanceCreateInfo::default().application_info(&app_info);
+        let instance_result = unsafe { entry.create_instance(&create_info, None) };
+        match instance_result {
+            Ok(instance) => {
+                let devices_result = unsafe { instance.enumerate_physical_devices() };
+                match devices_result {
+                    Ok(devices) => {
+                        devices.into_iter().for_each(|device| {
+                            fetch_device(&instance, device);
+                        });
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to enumerate physical devices: {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to create instance: {:?}", e);
+                continue;
+            }
+        }
+        break;
     }
 }
