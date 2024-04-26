@@ -66,13 +66,7 @@ fn get_device_info(device: PhysicalDevice) -> Vec<String> {
 }
 
 pub fn iterate_devices() {
-    let entry = match unsafe { Entry::load() } {
-        Ok(entry) => entry,
-        Err(e) => {
-            eprintln!("Failed to load entry: {:?}", e);
-            return;
-        }
-    };
+    let entry = Entry::linked();
 
     let versions = [
         vk::API_VERSION_1_3,

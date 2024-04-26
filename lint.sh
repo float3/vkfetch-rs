@@ -1,5 +1,4 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash -p cargo rustup openimagedenoise
+#!/usr/bin/env bash
 
 cargo update --workspace 
 cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features --workspace  -- -D warnings

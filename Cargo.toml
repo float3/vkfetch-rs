@@ -5,10 +5,10 @@ edition = "2021"
 keywords = ["vulkan", "neofetch", "gpu", "fetch"]
 license = "AGPL-3.0"
 repository = "https://github.com/float3/vkfetch-rs"
-version = "0.0.5"
+version = "0.0.6"
 name = "vkfetch-rs"
 categories = ["command-line-utilities"]
 readme = "README.md"
 
 [dependencies]
-ash = "0.38.0"
+ash ={version = "0.38.0", default-features = false, features = ["std", "linked"] }
