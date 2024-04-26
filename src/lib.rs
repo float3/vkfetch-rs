@@ -65,8 +65,21 @@ fn get_device_info(device: PhysicalDevice) -> Vec<String> {
     output
 }
 
+#[cfg(all(feature = "linked", feature = "loaded"))]
+compile_error!("Only one of 'linked' or 'loaded' features can be enabled");
+
 pub fn iterate_devices() {
+    #[cfg(feature = "linked")]
     let entry = Entry::linked();
+
+    #[cfg(feature = "loaded")]
+    let entry = match unsafe { Entry::load() } {
+        Ok(entry) => entry,
+        Err(e) => {
+            eprintln!("Failed to load entry: {:?}", e);
+            return;
+        }
+    };
 
     let versions = [
         vk::API_VERSION_1_3,

@@ -10,5 +10,10 @@ name = "vkfetch-rs"
 categories = ["command-line-utilities"]
 readme = "README.md"
 
+[features]
+default = ["linked"]
+linked = ["ash/linked"]
+loaded = ["ash/loaded"]
+
 [dependencies]
-ash ={version = "0.38.0", default-features = false, features = ["std", "linked"] }
+ash ={version = "0.38.0", default-features = false, features = ["std"] }
