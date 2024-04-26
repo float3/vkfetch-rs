@@ -3,7 +3,6 @@ pub mod ascii_art;
 pub mod device;
 pub mod vendor;
 
-use ascii_art::RED;
 use ash::*;
 use device::PhysicalDevice;
 use std::str;
@@ -40,18 +39,25 @@ const ALIGNMENT: &str = "    ";
 fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
     let mut output: Vec<String> = Vec::new();
 
-    output.push(format!(
-        "{}{} : {}{}",
+    let x = format!(
+        "{}{}{}{}: {}",
         BOLD,
+        color,
         device.device_name,
         RESET,
         device.device_type.name()
-    ));
+    );
 
-    output.push(format!("{}========================================", color));
+    let length = device.device_name.len() + device.device_type.name().len() + 3;
+
+    output.push(x.clone());
+
+    let underline: String = std::iter::repeat("=").take(length).collect();
+
+    output.push(format!("{}{}{}", BOLD, color, underline));
 
     output.push(format!(
-        "{}{}Device: {}0x{:X} : 0x{:X} ({})",
+        "{}{}Device{}: 0x{:X} : 0x{:X} ({})",
         ALIGNMENT,
         color,
         RESET,
@@ -61,12 +67,12 @@ fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
     ));
 
     output.push(format!(
-        "{}{}Driver: {}{} : {}",
+        "{}{}Driver{}: {} : {}",
         ALIGNMENT, color, RESET, device.driver_name, device.driver_info
     ));
 
     output.push(format!(
-        "{}{}API: {}{}",
+        "{}{}API{}: {}",
         ALIGNMENT, color, RESET, device.api_version,
     ));
 
