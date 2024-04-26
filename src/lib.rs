@@ -3,6 +3,7 @@ pub mod ascii_art;
 pub mod device;
 pub mod vendor;
 
+use ascii_art::RED;
 use ash::*;
 use device::PhysicalDevice;
 use std::str;
@@ -20,7 +21,7 @@ pub fn fetch_device(instance: &Instance, device: vk::PhysicalDevice) {
 
     let device = PhysicalDevice::new(instance, device);
 
-    let info = get_device_info(device);
+    let info = get_device_info(device, vendor.get_styles()[0]);
 
     let empty = "".to_string();
     for i in 0..art.len().max(info.len()) {
@@ -36,7 +37,7 @@ const BOLD: &str = "\x1B[1m";
 const RESET: &str = "\x1B[0m";
 const ALIGNMENT: &str = "    ";
 
-fn get_device_info(device: PhysicalDevice) -> Vec<String> {
+fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
     let mut output: Vec<String> = Vec::new();
 
     output.push(format!(
@@ -47,20 +48,27 @@ fn get_device_info(device: PhysicalDevice) -> Vec<String> {
         device.device_type.name()
     ));
 
+    output.push(format!("{}========================================", color));
+
     output.push(format!(
-        "{}Device: 0x{:X} : 0x{:X} ({})",
+        "{}{}Device: {}0x{:X} : 0x{:X} ({})",
         ALIGNMENT,
+        color,
+        RESET,
         device.device_id,
         device.vendor_id,
         device.vendor.name(),
     ));
 
     output.push(format!(
-        "{}Driver: {} : {}",
-        ALIGNMENT, device.driver_name, device.driver_info
+        "{}{}Driver: {}{} : {}",
+        ALIGNMENT, color, RESET, device.driver_name, device.driver_info
     ));
 
-    output.push(format!("{}API: {}", ALIGNMENT, device.api_version,));
+    output.push(format!(
+        "{}{}API: {}{}",
+        ALIGNMENT, color, RESET, device.api_version,
+    ));
 
     output
 }
