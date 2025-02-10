@@ -254,7 +254,6 @@ mod tests {
 
     /// For testing purposes we use the Unknown vendor variant.
     impl Vendor {
-        /// For tests we force the vendor to Unknown.
         pub fn dummy() -> Self {
             Vendor::Unknown
         }
@@ -297,24 +296,19 @@ mod tests {
         assert_eq!(format_bytes(1024), "1.000 KB");
         assert_eq!(format_bytes(1024 * 1024), "1.000 MB");
         assert_eq!(format_bytes(1024 * 1024 * 1024), "1.000 GB");
-        // 1 TB = 1024 GB
         assert_eq!(format_bytes(1024 * 1024 * 1024 * 1024), "1.000 TB");
     }
 
     #[test]
     fn test_get_device_info() {
         let device = dummy_physical_device();
-        // Use a test color (green).
         let color = "\x1B[32m";
         let info = get_device_info(&device, color);
-        // Check that we got at least nine lines.
         assert!(info.len() >= 9);
-        // Verify key substrings appear.
         assert!(info[0].contains("TestDevice"));
         assert!(info[0].contains(device.device_type.name()));
         assert!(info[2].contains("0xDEADBEEF"));
         assert!(info[2].contains("0xBEEF"));
-        // Check optional fields are printed correctly.
         assert!(info[7].contains("10") || info[7].contains("N/A"));
         assert!(info[8].contains("32") || info[8].contains("N/A"));
     }

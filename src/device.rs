@@ -111,7 +111,6 @@ impl PhysicalDevice {
             f32::NAN
         };
 
-        // Initialize common GPUCharacteristics fields.
         let mut characteristics = GPUCharacteristics {
             memory_pressure,
             // Vendor-specific fields start as None.

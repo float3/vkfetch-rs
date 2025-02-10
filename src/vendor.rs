@@ -1,6 +1,7 @@
 use crate::ascii_art::*;
 
-#[derive(Debug)]
+/// Represents a GPU vendor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Vendor {
     AMD = 0x1002,
     ImgTec = 0x1010,
@@ -24,6 +25,7 @@ pub enum Vendor {
 const BLOCK: &str = "\x1B[7m \x1B[0m";
 
 impl Vendor {
+    /// Returns the vendor-specific ASCII art with color styling applied.
     pub fn get_ascii_art(&self) -> Vec<String> {
         let art: &[&str] = match self {
             Vendor::AMD => AMD,
@@ -34,8 +36,8 @@ impl Vendor {
             Vendor::Nvidia => NVIDIA,
             Vendor::Microsoft => MICROSOFT,
             Vendor::Qualcomm => QUALCOMM,
-            Vendor::Mesa //=> MESA,
-            | Vendor::Unknown
+            Vendor::Mesa => VULKAN,
+            Vendor::Unknown
             | Vendor::ImgTec
             | Vendor::VIV
             | Vendor::VSI
@@ -49,11 +51,11 @@ impl Vendor {
 
         let mut modified_art: Vec<String> = art.iter().map(|&line| line.to_string()).collect();
 
-        for (char, style) in CHARS.iter().zip(styles.iter()) {
+        for (symbol, style) in CHARS.iter().zip(styles.iter()) {
             if !style.is_empty() {
                 modified_art = modified_art
                     .iter()
-                    .map(|line| line.replace(*char, &format!("{}{}", style, BLOCK)))
+                    .map(|line| line.replace(*symbol, &format!("{}{}", style, BLOCK)))
                     .collect();
             }
         }
@@ -61,6 +63,7 @@ impl Vendor {
         modified_art
     }
 
+    /// Returns an array of style strings associated with the vendor.
     pub const fn get_styles(&self) -> [&str; LUT_SIZE] {
         match self {
             Vendor::AMD => AMD_STYLE,
@@ -71,8 +74,8 @@ impl Vendor {
             Vendor::Nvidia => NVIDIA_STYLE,
             Vendor::Microsoft => MICROSOFT_STYLE,
             Vendor::Qualcomm => QUALCOMM_STYLE,
-            Vendor::Mesa //=> MESA_STYLE,
-            | Vendor::Unknown
+            Vendor::Mesa => VULKAN_STYLE,
+            Vendor::Unknown
             | Vendor::ImgTec
             | Vendor::VIV
             | Vendor::VSI
@@ -83,6 +86,7 @@ impl Vendor {
         }
     }
 
+    /// Returns a human-readable name for the vendor.
     pub fn name(&self) -> &'static str {
         match self {
             Vendor::AMD => "AMD",
@@ -105,6 +109,7 @@ impl Vendor {
         }
     }
 
+    /// Constructs a Vendor from a vendor ID, if recognized.
     pub fn from_vendor_id(id: u32) -> Option<Self> {
         match id {
             0x1002 => Some(Vendor::AMD),
@@ -132,5 +137,61 @@ impl Vendor {
 impl From<Vendor> for u32 {
     fn from(v: Vendor) -> Self {
         v as u32
+    }
+}
+
+/// Allows a vendor to be printed using its human‑readable name.
+impl std::fmt::Display for Vendor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_vendor_id() {
+        assert_eq!(Vendor::from_vendor_id(0x1002), Some(Vendor::AMD));
+        assert_eq!(Vendor::from_vendor_id(0x1010), Some(Vendor::ImgTec));
+        assert_eq!(Vendor::from_vendor_id(0x10DE), Some(Vendor::Nvidia));
+        assert_eq!(Vendor::from_vendor_id(0x9999), None);
+    }
+
+    #[test]
+    fn test_name() {
+        assert_eq!(Vendor::AMD.name(), "AMD");
+        assert_eq!(Vendor::Apple.name(), "Apple");
+        assert_eq!(Vendor::Intel.name(), "Intel");
+        assert_eq!(Vendor::Unknown.name(), "Unknown");
+    }
+
+    #[test]
+    fn test_display() {
+        let vendor = Vendor::Nvidia;
+        let s = format!("{}", vendor);
+        assert_eq!(s, vendor.name());
+    }
+
+    #[test]
+    fn test_get_styles_length() {
+        let vendor = Vendor::AMD;
+        let styles = vendor.get_styles();
+        assert_eq!(styles.len(), crate::ascii_art::LUT_SIZE);
+    }
+
+    #[test]
+    fn test_get_ascii_art() {
+        let vendor = Vendor::AMD;
+        let art = vendor.get_ascii_art();
+        assert!(!art.is_empty(), "ASCII art should not be empty");
+
+        let styles = vendor.get_styles();
+        let non_empty_style = styles.iter().any(|s| !s.is_empty());
+        if non_empty_style {
+            let block_found = art.iter().any(|line| line.contains(BLOCK));
+            assert!(block_found, "Styled block should appear in ASCII art lines");
+        }
     }
 }
