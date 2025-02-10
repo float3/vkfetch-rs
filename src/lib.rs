@@ -163,11 +163,22 @@ fn get_device_info(device: &PhysicalDevice, color: &str) -> Vec<String> {
     // ));
     lines.push(format!(
         "{}{}Max Compute Shared Memory Size{}: {} bytes",
-        ALIGNMENT, color, RESET, device.characteristics.max_compute_shared_memory_size
+        ALIGNMENT,
+        color,
+        RESET,
+        format_bytes(device.characteristics.max_compute_shared_memory_size.into())
     ));
     lines.push(format!(
         "{}{}Max Compute Work Group Invocations{}: {}",
-        ALIGNMENT, color, RESET, device.characteristics.max_compute_work_group_invocations
+        ALIGNMENT,
+        color,
+        RESET,
+        format_bytes(
+            device
+                .characteristics
+                .max_compute_work_group_invocations
+                .into()
+        )
     ));
 
     lines
