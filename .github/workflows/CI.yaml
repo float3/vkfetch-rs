@@ -42,7 +42,7 @@ jobs:
           ${{ runner.os }}-cargo-registry-
 
     - name: Dependencies
-      run: sudo apt install apt source vulkan-loader vulkan-tools
+      run: sudo apt install vulkan-loader vulkan-tools
 
     - name: Build
       run: cargo build --verbose --workspace --all-targets --all-features
