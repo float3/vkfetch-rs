@@ -1,5 +1,6 @@
 use crate::ascii_art::*;
 
+#[derive(Debug)]
 pub enum Vendor {
     AMD = 0x1002,
     ImgTec = 0x1010,

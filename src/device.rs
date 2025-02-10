@@ -1,10 +1,11 @@
-use ash::{
-    vk::{self},
-    Instance,
-};
+use ash::vk;
+use ash::Instance;
+use std::ffi::CStr;
 
 use crate::vendor::Vendor;
 
+/// Represents a physical GPU device.
+#[derive(Debug)]
 pub struct PhysicalDevice {
     pub vendor: Vendor,
     pub device_name: String,
@@ -20,58 +21,73 @@ pub struct PhysicalDevice {
     pub characteristics: GPUCharacteristics,
 }
 
+/// Contains various characteristics of a GPU.
+/// Vendor-specific properties are stored as Options.
+/// Also includes some general device limits.
+#[derive(Debug)]
 pub struct GPUCharacteristics {
+    /// Memory pressure as computed from VRAM usage (0.0 to 1.0)
     pub memory_pressure: f32,
-    pub compute_units: u32,
-    pub shader_engines: u32,
-    pub shader_arrays_per_engine_count: u32,
-    pub compute_units_per_shader_array: u32,
-    pub simd_per_compute_unit: u32,
-    pub wavefronts_per_simd: u32,
-    pub wavefront_size: u32,
-    // Nvidia specific
+    // AMD-specific properties.
+    pub compute_units: Option<u32>,
+    pub shader_engines: Option<u32>,
+    pub shader_arrays_per_engine_count: Option<u32>,
+    pub compute_units_per_shader_array: Option<u32>,
+    pub simd_per_compute_unit: Option<u32>,
+    pub wavefronts_per_simd: Option<u32>,
+    pub wavefront_size: Option<u32>,
+    // NVIDIA-specific properties.
     pub streaming_multiprocessors: Option<u32>,
     pub warps_per_sm: Option<u32>,
+    // General device limits (useful for performance and capability queries).
+    pub max_image_dimension_2d: u32,
+    pub max_compute_shared_memory_size: u32,
+    pub max_compute_work_group_invocations: u32,
 }
 
 impl PhysicalDevice {
+    /// Constructs a new `PhysicalDevice` by querying Vulkan properties.
     pub fn new(instance: &Instance, physical_device: vk::PhysicalDevice) -> Self {
+        // Get the core properties and limits.
         let physical_device_properties: vk::PhysicalDeviceProperties =
             unsafe { instance.get_physical_device_properties(physical_device) };
+        let limits = physical_device_properties.limits;
 
+        // Query additional driver properties.
         let mut driver_properties: vk::PhysicalDeviceDriverProperties =
             vk::PhysicalDeviceDriverProperties::default();
-
         let mut properties2: vk::PhysicalDeviceProperties2 =
             vk::PhysicalDeviceProperties2::default().push_next(&mut driver_properties);
-
         unsafe {
             instance.get_physical_device_properties2(physical_device, &mut properties2);
-        };
+        }
 
         let vendor_id = physical_device_properties.vendor_id;
+        let vendor = Vendor::from_vendor_id(vendor_id).unwrap_or_else(|| {
+            eprintln!("Unknown vendor: {}", vendor_id);
+            panic!();
+        });
 
-        let vendor = match Vendor::from_vendor_id(vendor_id) {
-            Some(v) => v,
-            None => {
-                eprintln!("Unknown vendor: {}", vendor_id);
-                panic!();
-            }
-        };
-
-        let device_name =
-            cstring_to_string(physical_device_properties.device_name_as_c_str().unwrap());
-
+        let device_name = cstring_to_string(
+            physical_device_properties
+                .device_name_as_c_str()
+                .unwrap_or_else(|_| CStr::from_bytes_with_nul(b"Unknown\0").unwrap()),
+        );
         let device_type = DeviceType::from(physical_device_properties.device_type.as_raw());
-
         let device_id = physical_device_properties.device_id;
-
         let api_version = decode_version_number(physical_device_properties.api_version);
+        let driver_name = cstring_to_string(
+            driver_properties
+                .driver_name_as_c_str()
+                .unwrap_or_else(|_| CStr::from_bytes_with_nul(b"Unknown\0").unwrap()),
+        );
+        let driver_info = cstring_to_string(
+            driver_properties
+                .driver_info_as_c_str()
+                .unwrap_or_else(|_| CStr::from_bytes_with_nul(b"Unknown\0").unwrap()),
+        );
 
-        let driver_name = cstring_to_string(driver_properties.driver_name_as_c_str().unwrap());
-
-        let driver_info = cstring_to_string(driver_properties.driver_info_as_c_str().unwrap());
-
+        // Query VRAM details.
         let mut memory_budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
         let mut memory_properties2 =
             vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut memory_budget);
@@ -80,8 +96,6 @@ impl PhysicalDevice {
                 .get_physical_device_memory_properties2(physical_device, &mut memory_properties2);
         }
         let memory_properties = memory_properties2.memory_properties;
-
-        // Determine VRAM heap index (first DEVICE_LOCAL heap)
         let vram_heap_index = (0..memory_properties.memory_heap_count)
             .find(|&i| {
                 memory_properties.memory_heaps[i as usize]
@@ -89,8 +103,6 @@ impl PhysicalDevice {
                     .contains(vk::MemoryHeapFlags::DEVICE_LOCAL)
             })
             .unwrap_or(0);
-
-        // Compute heapsize, budget, and memory pressure
         let heapsize = memory_properties.memory_heaps[vram_heap_index as usize].size;
         let heapbudget = memory_budget.heap_budget[vram_heap_index as usize];
         let memory_pressure = if heapbudget > 0 {
@@ -99,8 +111,27 @@ impl PhysicalDevice {
             f32::NAN
         };
 
-        // Get vendor-specific characteristics.
-        let characteristics = match vendor {
+        // Initialize common GPUCharacteristics fields.
+        let mut characteristics = GPUCharacteristics {
+            memory_pressure,
+            // Vendor-specific fields start as None.
+            compute_units: None,
+            shader_engines: None,
+            shader_arrays_per_engine_count: None,
+            compute_units_per_shader_array: None,
+            simd_per_compute_unit: None,
+            wavefronts_per_simd: None,
+            wavefront_size: None,
+            streaming_multiprocessors: None,
+            warps_per_sm: None,
+            // General limits:
+            max_image_dimension_2d: limits.max_image_dimension2_d,
+            max_compute_shared_memory_size: limits.max_compute_shared_memory_size,
+            max_compute_work_group_invocations: limits.max_compute_work_group_invocations,
+        };
+
+        // Query vendor-specific properties.
+        match vendor {
             Vendor::AMD => {
                 let mut shader_core_properties =
                     vk::PhysicalDeviceShaderCorePropertiesAMD::default();
@@ -112,22 +143,21 @@ impl PhysicalDevice {
                 unsafe {
                     instance.get_physical_device_properties2(physical_device, &mut amd_properties2);
                 }
-                GPUCharacteristics {
-                    memory_pressure,
-                    compute_units: shader_core_properties.shader_engine_count
+                characteristics.compute_units = Some(
+                    shader_core_properties.shader_engine_count
                         * shader_core_properties.shader_arrays_per_engine_count
                         * shader_core_properties.compute_units_per_shader_array,
-                    shader_engines: shader_core_properties.shader_engine_count,
-                    shader_arrays_per_engine_count: shader_core_properties
-                        .shader_arrays_per_engine_count,
-                    compute_units_per_shader_array: shader_core_properties
-                        .compute_units_per_shader_array,
-                    simd_per_compute_unit: shader_core_properties.simd_per_compute_unit,
-                    wavefronts_per_simd: shader_core_properties.wavefronts_per_simd,
-                    wavefront_size: shader_core_properties.wavefront_size,
-                    streaming_multiprocessors: None,
-                    warps_per_sm: None,
-                }
+                );
+                characteristics.shader_engines = Some(shader_core_properties.shader_engine_count);
+                characteristics.shader_arrays_per_engine_count =
+                    Some(shader_core_properties.shader_arrays_per_engine_count);
+                characteristics.compute_units_per_shader_array =
+                    Some(shader_core_properties.compute_units_per_shader_array);
+                characteristics.simd_per_compute_unit =
+                    Some(shader_core_properties.simd_per_compute_unit);
+                characteristics.wavefronts_per_simd =
+                    Some(shader_core_properties.wavefronts_per_simd);
+                characteristics.wavefront_size = Some(shader_core_properties.wavefront_size);
             }
             Vendor::Nvidia => {
                 let mut sm_builtins = vk::PhysicalDeviceShaderSMBuiltinsPropertiesNV::default();
@@ -136,32 +166,12 @@ impl PhysicalDevice {
                 unsafe {
                     instance.get_physical_device_properties2(physical_device, &mut nv_properties2);
                 }
-                GPUCharacteristics {
-                    memory_pressure,
-                    // For NVIDIA, AMD-specific values are not applicable.
-                    compute_units: 0,
-                    shader_engines: 0,
-                    shader_arrays_per_engine_count: 0,
-                    compute_units_per_shader_array: 0,
-                    simd_per_compute_unit: 0,
-                    wavefronts_per_simd: 0,
-                    wavefront_size: 0,
-                    streaming_multiprocessors: Some(sm_builtins.shader_sm_count),
-                    warps_per_sm: Some(sm_builtins.shader_warps_per_sm),
-                }
+                characteristics.streaming_multiprocessors = Some(sm_builtins.shader_sm_count);
+                characteristics.warps_per_sm = Some(sm_builtins.shader_warps_per_sm);
             }
-            _ => GPUCharacteristics {
-                memory_pressure,
-                compute_units: 0,
-                shader_engines: 0,
-                shader_arrays_per_engine_count: 0,
-                compute_units_per_shader_array: 0,
-                simd_per_compute_unit: 0,
-                wavefronts_per_simd: 0,
-                wavefront_size: 0,
-                streaming_multiprocessors: None,
-                warps_per_sm: None,
-            },
+            _ => {
+                // For other vendors, vendor-specific fields remain None.
+            }
         };
 
         PhysicalDevice {
@@ -180,6 +190,8 @@ impl PhysicalDevice {
     }
 }
 
+/// Represents the type of device.
+#[derive(Debug)]
 pub enum DeviceType {
     Other = 0,
     IntegratedGPU = 1,
@@ -190,6 +202,7 @@ pub enum DeviceType {
 }
 
 impl DeviceType {
+    /// Converts an integer ID (from Vulkan) into a DeviceType.
     pub fn from(id: i32) -> Self {
         match id {
             0 => DeviceType::Other,
@@ -201,6 +214,7 @@ impl DeviceType {
         }
     }
 
+    /// Returns a human‑readable name.
     pub fn name(&self) -> &'static str {
         match self {
             DeviceType::Other => "Other",
@@ -213,12 +227,7 @@ impl DeviceType {
     }
 }
 
-/*
-    The variant is a 3-bit integer packed into bits 31-29.
-    The major version is a 7-bit integer packed into bits 28-22.
-    The minor version number is a 10-bit integer packed into bits 21-12.
-    The patch version number is a 12-bit integer packed into bits 11-0.
-*/
+/// Decodes a Vulkan version number into a string of the form "variant.major.minor.patch".
 pub fn decode_version_number(version: u32) -> String {
     let variant = (version >> 29) & 0b111;
     let major = (version >> 22) & 0b1111111;
@@ -227,6 +236,79 @@ pub fn decode_version_number(version: u32) -> String {
     format!("{}.{}.{}.{}", variant, major, minor, patch)
 }
 
-pub fn cstring_to_string(cstr: &std::ffi::CStr) -> String {
-    cstr.to_string_lossy().to_string()
+/// Converts a CStr to a Rust String.
+pub fn cstring_to_string(cstr: &CStr) -> String {
+    cstr.to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ash::vk;
+    use std::ffi::CString;
+
+    // Helper to create a dummy CString.
+    fn dummy_cstr(s: &str) -> CString {
+        CString::new(s).unwrap()
+    }
+
+    #[test]
+    fn test_decode_version_number() {
+        // Simulate a Vulkan version: variant 0, version 1.2.3
+        let version: u32 = (0 << 29) | (1 << 22) | (2 << 12) | 3;
+        let decoded = decode_version_number(version);
+        assert_eq!(decoded, "0.1.2.3");
+    }
+
+    #[test]
+    fn test_cstring_to_string() {
+        let original = "Hello, world!";
+        let cstr = dummy_cstr(original);
+        let s = cstring_to_string(cstr.as_c_str());
+        assert_eq!(s, original);
+    }
+
+    #[test]
+    fn test_device_type_from() {
+        assert_eq!(DeviceType::from(0).name(), "Other");
+        assert_eq!(DeviceType::from(1).name(), "Integrated GPU");
+        assert_eq!(DeviceType::from(2).name(), "Discrete GPU");
+        assert_eq!(DeviceType::from(3).name(), "Virtual GPU");
+        assert_eq!(DeviceType::from(4).name(), "CPU");
+        assert_eq!(DeviceType::from(99).name(), "Unknown");
+    }
+
+    #[test]
+    fn test_gpu_characteristics_defaults() {
+        // Create dummy limits.
+        let limits = vk::PhysicalDeviceLimits {
+            max_image_dimension2_d: 8192,
+            max_compute_shared_memory_size: 16384,
+            max_compute_work_group_invocations: 1024,
+            // Other fields can use defaults.
+            ..Default::default()
+        };
+
+        // Construct dummy GPUCharacteristics with only common limits.
+        let characteristics = GPUCharacteristics {
+            memory_pressure: 0.5,
+            compute_units: None,
+            shader_engines: None,
+            shader_arrays_per_engine_count: None,
+            compute_units_per_shader_array: None,
+            simd_per_compute_unit: None,
+            wavefronts_per_simd: None,
+            wavefront_size: None,
+            streaming_multiprocessors: None,
+            warps_per_sm: None,
+            max_image_dimension_2d: limits.max_image_dimension2_d,
+            max_compute_shared_memory_size: limits.max_compute_shared_memory_size,
+            max_compute_work_group_invocations: limits.max_compute_work_group_invocations,
+        };
+
+        assert_eq!(characteristics.max_image_dimension_2d, 8192);
+        assert_eq!(characteristics.max_compute_shared_memory_size, 16384);
+        assert_eq!(characteristics.max_compute_work_group_invocations, 1024);
+        assert!(characteristics.compute_units.is_none());
+    }
 }

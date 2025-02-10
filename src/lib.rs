@@ -1,3 +1,4 @@
+// lib.rs (or main.rs)
 pub mod ascii_art;
 pub mod device;
 pub mod vendor;
@@ -11,6 +12,7 @@ const RESET: &str = "\x1B[0m";
 const ALIGNMENT: &str = "    ";
 const EMPTY: &str = "";
 
+/// Fetches and prints information for a given physical device.
 pub fn fetch_device(instance: &Instance, device_handle: vk::PhysicalDevice) {
     let properties = unsafe { instance.get_physical_device_properties(device_handle) };
     let mut properties2 = vk::PhysicalDeviceProperties2::default();
@@ -23,18 +25,22 @@ pub fn fetch_device(instance: &Instance, device_handle: vk::PhysicalDevice) {
     let art = vendor.get_ascii_art();
 
     let device = PhysicalDevice::new(instance, device_handle);
-    let info = get_device_info(device, vendor.get_styles()[0]);
+    let info = get_device_info(&device, vendor.get_styles()[0]);
 
     for i in 0..art.len().max(info.len()) {
         let art_line = art.get(i).map(String::as_str).unwrap_or(EMPTY);
         let info_line = info.get(i).map(String::as_str).unwrap_or(EMPTY);
         println!(" {} {}", art_line, info_line);
     }
-
     println!();
 }
 
-fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
+/// Returns a vector of formatted strings representing the device info,
+/// including extra vendor-specific and general device limits.
+/// Lines for optional fields are only included if available.
+fn get_device_info(device: &PhysicalDevice, color: &str) -> Vec<String> {
+    let mut lines = Vec::new();
+
     let title = format!(
         "{}{}{}{}: {}",
         BOLD,
@@ -46,71 +52,128 @@ fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
     let underline_len = device.device_name.len() + device.device_type.name().len() + 3;
     let underline = "=".repeat(underline_len);
 
-    // Assume meter_width is defined (e.g. 30)
     let meter_width = 30;
     let filled = (device.characteristics.memory_pressure * meter_width as f32).round() as usize;
 
-    vec![
-        title,
-        format!("{}{}{}", BOLD, color, underline),
-        format!(
-            "{}{}Device{}: 0x{:X} : 0x{:X} ({})",
-            ALIGNMENT,
-            color,
-            RESET,
-            device.device_id,
-            device.vendor_id,
-            device.vendor.name(),
-        ),
-        format!(
-            "{}{}Driver{}: {} : {}",
-            ALIGNMENT, color, RESET, device.driver_name, device.driver_info
-        ),
-        format!("{}{}API{}: {}", ALIGNMENT, color, RESET, device.api_version),
-        format!(
-            "{}{}VRAM{}: {}{}{} / {}",
-            ALIGNMENT,
-            color,
-            RESET,
-            color,
-            format_bytes(device.heapbudget),
-            RESET,
-            format_bytes(device.heapsize)
-        ),
-        format!(
-            "{}[{}{}{}{}] % {}{:.2}{}",
-            ALIGNMENT,
-            color,
-            "|".repeat(filled),
-            RESET,
-            " ".repeat(meter_width - filled),
-            color,
-            device.characteristics.memory_pressure * 100.0,
-            RESET
-        ),
-        format!(
+    // Basic device info.
+    lines.push(title);
+    lines.push(format!("{}{}{}", BOLD, color, underline));
+    lines.push(format!(
+        "{}{}Device{}: 0x{:X} : 0x{:X} ({})",
+        ALIGNMENT,
+        color,
+        RESET,
+        device.device_id,
+        device.vendor_id,
+        device.vendor.name(),
+    ));
+    lines.push(format!(
+        "{}{}Driver{}: {} : {}",
+        ALIGNMENT, color, RESET, device.driver_name, device.driver_info
+    ));
+    lines.push(format!(
+        "{}{}API{}: {}",
+        ALIGNMENT, color, RESET, device.api_version
+    ));
+    lines.push(format!(
+        "{}{}VRAM{}: {}{}{} / {}",
+        ALIGNMENT,
+        color,
+        RESET,
+        color,
+        format_bytes(device.heapbudget),
+        RESET,
+        format_bytes(device.heapsize)
+    ));
+    lines.push(format!(
+        "{}[{}{}{}{}] % {}{:.2}{}",
+        ALIGNMENT,
+        color,
+        "|".repeat(filled),
+        RESET,
+        " ".repeat(meter_width - filled),
+        color,
+        device.characteristics.memory_pressure * 100.0,
+        RESET
+    ));
+
+    // Vendor-specific extra info.
+    if let Some(cu) = device.characteristics.compute_units {
+        lines.push(format!(
+            "{}{}Compute Units{}: {}",
+            ALIGNMENT, color, RESET, cu
+        ));
+    }
+    if let Some(se) = device.characteristics.shader_engines {
+        lines.push(format!(
+            "{}{}Shader Engines{}: {}",
+            ALIGNMENT, color, RESET, se
+        ));
+    }
+    if let Some(sapec) = device.characteristics.shader_arrays_per_engine_count {
+        lines.push(format!(
+            "{}{}Shader Arrays per Engine{}: {}",
+            ALIGNMENT, color, RESET, sapec
+        ));
+    }
+    if let Some(cups) = device.characteristics.compute_units_per_shader_array {
+        lines.push(format!(
+            "{}{}Compute Units per Shader Array{}: {}",
+            ALIGNMENT, color, RESET, cups
+        ));
+    }
+    if let Some(simd) = device.characteristics.simd_per_compute_unit {
+        lines.push(format!(
+            "{}{}SIMD per Compute Unit{}: {}",
+            ALIGNMENT, color, RESET, simd
+        ));
+    }
+    if let Some(wfs) = device.characteristics.wavefronts_per_simd {
+        lines.push(format!(
+            "{}{}Wavefronts per SIMD{}: {}",
+            ALIGNMENT, color, RESET, wfs
+        ));
+    }
+    if let Some(wfsz) = device.characteristics.wavefront_size {
+        lines.push(format!(
+            "{}{}Wavefront Size{}: {}",
+            ALIGNMENT, color, RESET, wfsz
+        ));
+    }
+    if let Some(sm) = device.characteristics.streaming_multiprocessors {
+        lines.push(format!(
             "{}{}Streaming Multiprocessors{}: {}",
-            ALIGNMENT,
-            color,
-            RESET,
-            device
-                .characteristics
-                .streaming_multiprocessors
-                .map_or("N/A".to_string(), |v| v.to_string())
-        ),
-        format!(
+            ALIGNMENT, color, RESET, sm
+        ));
+    }
+    if let Some(wps) = device.characteristics.warps_per_sm {
+        lines.push(format!(
             "{}{}Warps per SM{}: {}",
-            ALIGNMENT,
-            color,
-            RESET,
-            device
-                .characteristics
-                .warps_per_sm
-                .map_or("N/A".to_string(), |v| v.to_string())
-        ),
-    ]
+            ALIGNMENT, color, RESET, wps
+        ));
+    }
+
+    // General device limits.
+    // lines.push(format!(
+    //     "{}{}Max Image Dimension 2D{}: {}",
+    //     ALIGNMENT,
+    //     color,
+    //     RESET,
+    //     format_bytes(device.characteristics.max_image_dimension_2d.into())
+    // ));
+    lines.push(format!(
+        "{}{}Max Compute Shared Memory Size{}: {} bytes",
+        ALIGNMENT, color, RESET, device.characteristics.max_compute_shared_memory_size
+    ));
+    lines.push(format!(
+        "{}{}Max Compute Work Group Invocations{}: {}",
+        ALIGNMENT, color, RESET, device.characteristics.max_compute_work_group_invocations
+    ));
+
+    lines
 }
 
+/// Converts a byte count into a human‐readable string with up to TB precision.
 fn format_bytes(bytes: u64) -> String {
     const KB: f64 = 1024.0;
     const MB: f64 = KB * 1024.0;
@@ -130,6 +193,7 @@ fn format_bytes(bytes: u64) -> String {
     }
 }
 
+/// Iterates through API versions and prints info for every physical device
 pub fn iterate_devices() {
     let entry = {
         #[cfg(not(feature = "loaded"))]
@@ -179,5 +243,79 @@ pub fn iterate_devices() {
             }
         }
         break;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::{GPUCharacteristics, PhysicalDevice};
+    use crate::vendor::Vendor;
+
+    /// For testing purposes we use the Unknown vendor variant.
+    impl Vendor {
+        /// For tests we force the vendor to Unknown.
+        pub fn dummy() -> Self {
+            Vendor::Unknown
+        }
+    }
+
+    /// Creates a dummy PhysicalDevice instance for tests.
+    fn dummy_physical_device() -> PhysicalDevice {
+        PhysicalDevice {
+            vendor: Vendor::dummy(),
+            device_name: "TestDevice".to_string(),
+            device_type: crate::device::DeviceType::DiscreteGPU,
+            device_id: 0xDEADBEEF,
+            vendor_id: 0xBEEF,
+            driver_name: "TestDriver".to_string(),
+            driver_info: "TestDriverInfo".to_string(),
+            api_version: "1.2.3.4".to_string(),
+            heapbudget: 8 * 1024 * 1024 * 1024, // 8 GB
+            heapsize: 10 * 1024 * 1024 * 1024,  // 10 GB
+            characteristics: GPUCharacteristics {
+                memory_pressure: 0.2, // 20%
+                compute_units: Some(10),
+                shader_engines: Some(2),
+                shader_arrays_per_engine_count: Some(2),
+                compute_units_per_shader_array: Some(5),
+                simd_per_compute_unit: Some(64),
+                wavefronts_per_simd: Some(4),
+                wavefront_size: Some(32),
+                streaming_multiprocessors: Some(46),
+                warps_per_sm: Some(32),
+                max_image_dimension_2d: 16384,
+                max_compute_shared_memory_size: 65536,
+                max_compute_work_group_invocations: 1024,
+            },
+        }
+    }
+
+    #[test]
+    fn test_format_bytes() {
+        assert_eq!(format_bytes(500), "500 B");
+        assert_eq!(format_bytes(1024), "1.000 KB");
+        assert_eq!(format_bytes(1024 * 1024), "1.000 MB");
+        assert_eq!(format_bytes(1024 * 1024 * 1024), "1.000 GB");
+        // 1 TB = 1024 GB
+        assert_eq!(format_bytes(1024 * 1024 * 1024 * 1024), "1.000 TB");
+    }
+
+    #[test]
+    fn test_get_device_info() {
+        let device = dummy_physical_device();
+        // Use a test color (green).
+        let color = "\x1B[32m";
+        let info = get_device_info(&device, color);
+        // Check that we got at least nine lines.
+        assert!(info.len() >= 9);
+        // Verify key substrings appear.
+        assert!(info[0].contains("TestDevice"));
+        assert!(info[0].contains(device.device_type.name()));
+        assert!(info[2].contains("0xDEADBEEF"));
+        assert!(info[2].contains("0xBEEF"));
+        // Check optional fields are printed correctly.
+        assert!(info[7].contains("46") || info[7].contains("N/A"));
+        assert!(info[8].contains("32") || info[8].contains("N/A"));
     }
 }
