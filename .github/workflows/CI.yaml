@@ -1,0 +1,75 @@
+name: CI
+
+permissions:
+  pages: write
+  id-token: write
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable, beta, nightly]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+        components: rustfmt, clippy
+
+    - name: Cache Cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Build
+      run: cargo build --verbose --workspace --all-targets --all-features
+
+    - name: Run cargo check
+      run: cargo check --verbose --workspace --all-targets --all-features
+
+    - name: Run Clippy
+      run: cargo clippy --verbose --workspace --all-targets --all-features -- -D warnings
+
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+    - name: Run tests
+      run: cargo test --verbose --workspace --all-targets --all-features --no-fail-fast --lib --bins --examples --tests --benches
+
+    - name: Check for uncommitted changes
+      run: git diff --exit-code
+
+    - name: Generate cargo docs
+      if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+      run: cargo doc --workspace --no-deps
+
+    - name: Upload artifact
+      if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: "./target/doc"
+
+    - name: Deploy to GitHub Pages
+      if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+      id: deployment
+      uses: actions/deploy-pages@v4

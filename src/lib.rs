@@ -1,45 +1,41 @@
-#![allow(dead_code)]
 pub mod ascii_art;
 pub mod device;
 pub mod vendor;
 
-use ash::*;
+use ash::{self, vk, Entry, Instance};
 use device::PhysicalDevice;
-use std::str;
 use vendor::Vendor;
 
-pub fn fetch_device(instance: &Instance, device: vk::PhysicalDevice) {
-    let properties = unsafe { instance.get_physical_device_properties(device) };
+const BOLD: &str = "\x1B[1m";
+const RESET: &str = "\x1B[0m";
+const ALIGNMENT: &str = "    ";
+const EMPTY: &str = "";
+
+pub fn fetch_device(instance: &Instance, device_handle: vk::PhysicalDevice) {
+    let properties = unsafe { instance.get_physical_device_properties(device_handle) };
     let mut properties2 = vk::PhysicalDeviceProperties2::default();
-    unsafe { instance.get_physical_device_properties2(device, &mut properties2) }
+    unsafe {
+        instance.get_physical_device_properties2(device_handle, &mut properties2);
+    }
 
     let vendor = Vendor::from_vendor_id(properties.vendor_id)
         .unwrap_or_else(|| panic!("unknown vendor: {}", properties.vendor_id));
-
     let art = vendor.get_ascii_art();
 
-    let device = PhysicalDevice::new(instance, device);
-
+    let device = PhysicalDevice::new(instance, device_handle);
     let info = get_device_info(device, vendor.get_styles()[0]);
 
-    let empty = "".to_string();
     for i in 0..art.len().max(info.len()) {
-        let art_line = art.get(i).unwrap_or(&empty);
-        let info_line = info.get(i).unwrap_or(&empty);
+        let art_line = art.get(i).map(String::as_str).unwrap_or(EMPTY);
+        let info_line = info.get(i).map(String::as_str).unwrap_or(EMPTY);
         println!(" {} {}", art_line, info_line);
     }
 
     println!();
 }
 
-const BOLD: &str = "\x1B[1m";
-const RESET: &str = "\x1B[0m";
-const ALIGNMENT: &str = "    ";
-
 fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
-    let mut output: Vec<String> = Vec::new();
-
-    let x = format!(
+    let title = format!(
         "{}{}{}{}: {}",
         BOLD,
         color,
@@ -47,85 +43,139 @@ fn get_device_info(device: PhysicalDevice, color: &str) -> Vec<String> {
         RESET,
         device.device_type.name()
     );
+    let underline_len = device.device_name.len() + device.device_type.name().len() + 3;
+    let underline = "=".repeat(underline_len);
 
-    let length = device.device_name.len() + device.device_type.name().len() + 3;
+    // Assume meter_width is defined (e.g. 30)
+    let meter_width = 30;
+    let filled = (device.characteristics.memory_pressure * meter_width as f32).round() as usize;
 
-    output.push(x.clone());
-
-    let underline: String = std::iter::repeat("=").take(length).collect();
-
-    output.push(format!("{}{}{}", BOLD, color, underline));
-
-    output.push(format!(
-        "{}{}Device{}: 0x{:X} : 0x{:X} ({})",
-        ALIGNMENT,
-        color,
-        RESET,
-        device.device_id,
-        device.vendor_id,
-        device.vendor.name(),
-    ));
-
-    output.push(format!(
-        "{}{}Driver{}: {} : {}",
-        ALIGNMENT, color, RESET, device.driver_name, device.driver_info
-    ));
-
-    output.push(format!(
-        "{}{}API{}: {}",
-        ALIGNMENT, color, RESET, device.api_version,
-    ));
-
-    output
+    vec![
+        title,
+        format!("{}{}{}", BOLD, color, underline),
+        format!(
+            "{}{}Device{}: 0x{:X} : 0x{:X} ({})",
+            ALIGNMENT,
+            color,
+            RESET,
+            device.device_id,
+            device.vendor_id,
+            device.vendor.name(),
+        ),
+        format!(
+            "{}{}Driver{}: {} : {}",
+            ALIGNMENT, color, RESET, device.driver_name, device.driver_info
+        ),
+        format!("{}{}API{}: {}", ALIGNMENT, color, RESET, device.api_version),
+        format!(
+            "{}{}VRAM{}: {}{}{} / {}",
+            ALIGNMENT,
+            color,
+            RESET,
+            color,
+            format_bytes(device.heapbudget),
+            RESET,
+            format_bytes(device.heapsize)
+        ),
+        format!(
+            "{}[{}{}{}{}] % {}{:.2}{}",
+            ALIGNMENT,
+            color,
+            "|".repeat(filled),
+            RESET,
+            " ".repeat(meter_width - filled),
+            color,
+            device.characteristics.memory_pressure * 100.0,
+            RESET
+        ),
+        format!(
+            "{}{}Streaming Multiprocessors{}: {}",
+            ALIGNMENT,
+            color,
+            RESET,
+            device
+                .characteristics
+                .streaming_multiprocessors
+                .map_or("N/A".to_string(), |v| v.to_string())
+        ),
+        format!(
+            "{}{}Warps per SM{}: {}",
+            ALIGNMENT,
+            color,
+            RESET,
+            device
+                .characteristics
+                .warps_per_sm
+                .map_or("N/A".to_string(), |v| v.to_string())
+        ),
+    ]
 }
 
-#[cfg(all(feature = "linked", feature = "loaded"))]
-compile_error!("Only one of 'linked' or 'loaded' features can be enabled");
+fn format_bytes(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+    const TB: f64 = GB * 1024.0;
+    let bytes_f64 = bytes as f64;
+    if bytes_f64 >= TB {
+        format!("{:.3} TB", bytes_f64 / TB)
+    } else if bytes_f64 >= GB {
+        format!("{:.3} GB", bytes_f64 / GB)
+    } else if bytes_f64 >= MB {
+        format!("{:.3} MB", bytes_f64 / MB)
+    } else if bytes_f64 >= KB {
+        format!("{:.3} KB", bytes_f64 / KB)
+    } else {
+        format!("{} B", bytes)
+    }
+}
 
 pub fn iterate_devices() {
-    #[cfg(feature = "linked")]
-    let entry = Entry::linked();
-
-    #[cfg(feature = "loaded")]
-    let entry = match unsafe { Entry::load() } {
-        Ok(entry) => entry,
-        Err(e) => {
-            eprintln!("Failed to load entry: {:?}", e);
-            return;
+    let entry = {
+        #[cfg(not(feature = "loaded"))]
+        {
+            Entry::linked()
+        }
+        #[cfg(feature = "loaded")]
+        {
+            match unsafe { Entry::load() } {
+                Ok(entry) => entry,
+                Err(e) => {
+                    eprintln!("Failed to load entry: {:?}", e);
+                    return;
+                }
+            }
         }
     };
 
-    let versions = [
+    for api_version in [
         vk::API_VERSION_1_3,
         vk::API_VERSION_1_2,
         vk::API_VERSION_1_1,
         vk::API_VERSION_1_0,
-    ];
-
-    for api_version in versions {
+    ] {
         let app_info = vk::ApplicationInfo {
             api_version,
             ..Default::default()
         };
         let create_info = vk::InstanceCreateInfo::default().application_info(&app_info);
-        let instance_result = unsafe { entry.create_instance(&create_info, None) };
-        match instance_result {
-            Ok(instance) => {
-                let devices_result = unsafe { instance.enumerate_physical_devices() };
-                match devices_result {
-                    Ok(devices) => {
-                        devices.into_iter().for_each(|device| {
-                            fetch_device(&instance, device);
-                        });
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to enumerate physical devices: {:?}", e);
-                    }
-                }
-            }
+
+        let instance = match unsafe { entry.create_instance(&create_info, None) } {
+            Ok(instance) => instance,
             Err(e) => {
                 eprintln!("Failed to create instance: {:?}", e);
                 continue;
+            }
+        };
+
+        match unsafe { instance.enumerate_physical_devices() } {
+            Ok(devices) => {
+                for device in devices {
+                    fetch_device(&instance, device);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to enumerate physical devices: {:?}", e);
             }
         }
         break;

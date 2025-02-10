@@ -6,6 +6,7 @@ pub enum Vendor {
     Apple = 0x106B,
     Nvidia = 0x10DE,
     ARM = 0x13B5,
+    Microsoft = 0x1414,
     Google = 0x1AE0,
     Qualcomm = 0x5143,
     Intel = 0x8086,
@@ -29,10 +30,18 @@ impl Vendor {
             Vendor::ARM => ARM,
             Vendor::Google => GOOGLE,
             Vendor::Intel => INTEL,
-            Vendor::Mesa => VULKAN,
             Vendor::Nvidia => NVIDIA,
-            Vendor::Unknown => VULKAN,
-            _ => VULKAN,
+            Vendor::Microsoft => MICROSOFT,
+            Vendor::Qualcomm => QUALCOMM,
+            Vendor::Mesa //=> MESA,
+            | Vendor::Unknown
+            | Vendor::ImgTec
+            | Vendor::VIV
+            | Vendor::VSI
+            | Vendor::Kazan
+            | Vendor::Codeplay
+            | Vendor::Pocl
+            | Vendor::MobileEye => VULKAN,
         };
 
         let styles = self.get_styles();
@@ -58,10 +67,18 @@ impl Vendor {
             Vendor::ARM => ARM_STYLE,
             Vendor::Google => GOOGLE_STYLE,
             Vendor::Intel => INTEL_STYLE,
-            Vendor::Mesa => VULKAN_STYLE,
             Vendor::Nvidia => NVIDIA_STYLE,
-            Vendor::Unknown => VULKAN_STYLE,
-            _ => VULKAN_STYLE,
+            Vendor::Microsoft => MICROSOFT_STYLE,
+            Vendor::Qualcomm => QUALCOMM_STYLE,
+            Vendor::Mesa //=> MESA_STYLE,
+            | Vendor::Unknown
+            | Vendor::ImgTec
+            | Vendor::VIV
+            | Vendor::VSI
+            | Vendor::Kazan
+            | Vendor::Codeplay
+            | Vendor::Pocl
+            | Vendor::MobileEye => VULKAN_STYLE,
         }
     }
 
@@ -83,6 +100,7 @@ impl Vendor {
             Vendor::Unknown => "Unknown",
             Vendor::VIV => "VIV",
             Vendor::VSI => "VSI",
+            Vendor::Microsoft => "Microsoft",
         }
     }
 
@@ -93,6 +111,7 @@ impl Vendor {
             0x106B => Some(Vendor::Apple),
             0x10DE => Some(Vendor::Nvidia),
             0x13B5 => Some(Vendor::ARM),
+            0x1414 => Some(Vendor::Microsoft),
             0x1AE0 => Some(Vendor::Google),
             0x5143 => Some(Vendor::Qualcomm),
             0x8086 => Some(Vendor::Intel),

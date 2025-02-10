@@ -16,7 +16,6 @@ fn main() {
     iterate_devices()
 }
 
-#[allow(dead_code)]
-fn debug(x: Vec<String>) {
-    println!(" {}", x.join("\n "));
-}
+// fn debug(x: Vec<String>) {
+//     println!(" {}", x.join("\n "));
+// }

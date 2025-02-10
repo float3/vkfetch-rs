@@ -11,7 +11,7 @@ pub(crate) const YELLOW: &str = "\x1B[33m";
 // pub(crate) const BRIGHT_YELLOW: &str = "\x1B[93m";
 pub(crate) const BLUE: &str = "\x1B[34m";
 // pub(crate) const BRIGHT_BLUE: &str = "\x1B[94m";
-pub(crate) const MAGENTA: &str = "\x1B[35m";
+// pub(crate) const MAGENTA: &str = "\x1B[35m";
 // pub(crate) const BRIGHT_MAGENTA: &str = "\x1B[95m";
 pub(crate) const CYAN: &str = "\x1B[36m";
 // pub(crate) const BRIGHT_CYAN: &str = "\x1B[96m";
@@ -131,12 +131,52 @@ pub(crate) const ARM: &[&str] = &[
 
 pub(crate) const ARM_STYLE: [&str; LUT_SIZE] = [RED, "", "", "", BLACK];
 
-pub(crate) const MESA: &[&str] = &[
-    r#"   ###      ### $$$$$$$$ %%%%%%%%     &&&      "#,
-    r#"   #####  ##### $$$      %%          &&&&&     "#,
-    r#"   ############ $$$$$$$$ %%%%%%%%   &&& &&&    "#,
-    r#"   ###  ##  ### $$$            %%  &&&&&&&&&   "#,
-    r#"   ###      ### $$$$$$$$ %%%%%%%% &&&     &&&  "#,
+// pub(crate) const MESA: &[&str] = &[
+//     r#"   ###      ### $$$$$$$$ %%%%%%%%     &&&      "#,
+//     r#"   #####  ##### $$$      %%          &&&&&     "#,
+//     r#"   ############ $$$$$$$$ %%%%%%%%   &&& &&&    "#,
+//     r#"   ###  ##  ### $$$            %%  &&&&&&&&&   "#,
+//     r#"   ###      ### $$$$$$$$ %%%%%%%% &&&     &&&  "#,
+// ];
+
+// pub(crate) const MESA_STYLE: [&str; LUT_SIZE] = [BLUE, RED, GREEN, WHITE, BLACK];
+
+pub(crate) const MICROSOFT: &[&str] = &[
+    r#"                         "#,
+    r#" ########### $$$$$$$$$$$ "#,
+    r#" ########### $$$$$$$$$$$ "#,
+    r#" ########### $$$$$$$$$$$ "#,
+    r#" ########### $$$$$$$$$$$ "#,
+    r#" ########### $$$$$$$$$$$ "#,
+    r#" ########### $$$$$$$$$$$ "#,
+    r#"                         "#,
+    r#" %%%%%%%%%%% &&&&&&&&&&& "#,
+    r#" %%%%%%%%%%% &&&&&&&&&&& "#,
+    r#" %%%%%%%%%%% &&&&&&&&&&& "#,
+    r#" %%%%%%%%%%% &&&&&&&&&&& "#,
+    r#" %%%%%%%%%%% &&&&&&&&&&& "#,
+    r#" %%%%%%%%%%% &&&&&&&&&&& "#,
+    r#"                         "#,
 ];
 
-pub(crate) const MESA_STYLE: [&str; LUT_SIZE] = [BLUE, RED, GREEN, WHITE, BLACK];
+pub(crate) const MICROSOFT_STYLE: [&str; LUT_SIZE] = [RED, GREEN, BLUE, YELLOW, ""];
+
+pub(crate) const QUALCOMM: &[&str] = &[
+    r#"         ########         "#,
+    r#"      ##############      "#,
+    r#"    ####          ####    "#,
+    r#"  ####              ####  "#,
+    r#" ####                #### "#,
+    r#" ###                  ### "#,
+    r#"####                  ####"#,
+    r#"####                  ####"#,
+    r#" ###                  ### "#,
+    r#" ####          ###   #### "#,
+    r#"  ####          ### ####  "#,
+    r#"    ####         #####    "#,
+    r#"      ###############     "#,
+    r#"         ########  ###    "#,
+    r#"                    ###   "#,
+];
+
+pub(crate) const QUALCOMM_STYLE: [&str; LUT_SIZE] = [BLUE, "", "", "", ""];
