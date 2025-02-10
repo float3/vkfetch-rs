@@ -71,7 +71,7 @@ impl PhysicalDevice {
         let device_name = cstring_to_string(
             physical_device_properties
                 .device_name_as_c_str()
-                .unwrap_or_else(|_| CStr::from_bytes_with_nul(b"Unknown\0").unwrap()),
+                .unwrap_or(c"Unknown"),
         );
         let device_type = DeviceType::from(physical_device_properties.device_type.as_raw());
         let device_id = physical_device_properties.device_id;
@@ -79,12 +79,12 @@ impl PhysicalDevice {
         let driver_name = cstring_to_string(
             driver_properties
                 .driver_name_as_c_str()
-                .unwrap_or_else(|_| CStr::from_bytes_with_nul(b"Unknown\0").unwrap()),
+                .unwrap_or(c"Unknown"),
         );
         let driver_info = cstring_to_string(
             driver_properties
                 .driver_info_as_c_str()
-                .unwrap_or_else(|_| CStr::from_bytes_with_nul(b"Unknown\0").unwrap()),
+                .unwrap_or(c"Unknown"),
         );
 
         // Query VRAM details.
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_decode_version_number() {
         // Simulate a Vulkan version: variant 0, version 1.2.3
-        let version: u32 = (0 << 29) | (1 << 22) | (2 << 12) | 3;
+        let version: u32 = (1 << 22) | (2 << 12) | 3;
         let decoded = decode_version_number(version);
         assert_eq!(decoded, "0.1.2.3");
     }
