@@ -16,6 +16,3 @@ loaded = ["ash/loaded"]
 
 [dependencies]
 ash = { version = "0.38.0", default-features = false, features = ["std"] }
-
-[build-dependencies]
-pkg-config = "0.3.31"
