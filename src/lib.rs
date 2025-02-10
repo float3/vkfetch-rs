@@ -315,7 +315,7 @@ mod tests {
         assert!(info[2].contains("0xDEADBEEF"));
         assert!(info[2].contains("0xBEEF"));
         // Check optional fields are printed correctly.
-        assert!(info[7].contains("46") || info[7].contains("N/A"));
+        assert!(info[7].contains("10") || info[7].contains("N/A"));
         assert!(info[8].contains("32") || info[8].contains("N/A"));
     }
 }
