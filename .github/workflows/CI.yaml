@@ -41,6 +41,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-registry-
 
+    - name: Dependencies
+      run: sudo apt install libvulkan1 vulkan-utils mesa-vulkan-drivers
+
     - name: Build
       run: cargo build --verbose --workspace --all-targets --all-features
 
