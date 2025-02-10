@@ -1,7 +1,7 @@
 this is a rewrite of https://github.com/Wunkolo/vkfetch \
 I referenced the code and took some of the ASCII art from it \
-thanks to wunkolo for writing the original <3, love you buddy \
-I rewrote it because I wanted to have vkfetch on an easy to manage package manager
+thanks to wunkolo for writing the original, love you buddy \
+I rewrote it because I wanted to have vkfetch on an easy to access package manager
 
 # Goals
 - [ ] support all the features of the original vkfetch
