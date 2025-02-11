@@ -13,7 +13,7 @@ fn main() {
     // let vendor = vkfetch_rs::vendor::Vendor::AMD;
     // debug(vendor.get_ascii_art());
 
-    iterate_devices()
+    iterate_devices().unwrap()
 }
 
 // fn debug(x: Vec<String>) {

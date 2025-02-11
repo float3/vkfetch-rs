@@ -3,7 +3,7 @@ pub mod device;
 pub mod vendor;
 
 use ash::{self, vk, Entry, Instance};
-use device::PhysicalDevice;
+use device::Device;
 use std::error::Error;
 use vendor::Vendor;
 
@@ -27,14 +27,14 @@ pub fn fetch_device(
         .unwrap_or_else(|| panic!("unknown vendor: {}", properties.vendor_id));
     let art = vendor.get_ascii_art();
 
-    let device = PhysicalDevice::new(instance, device_handle);
+    let device = Device::new(instance, device_handle);
     let info = get_device_info(&device, vendor.get_styles()[0]);
 
-    let x = art.get(0).unwrap().len();
-    let empty = " ".repeat(x);
-
     for i in 0..art.len().max(info.len()) {
-        let art_line = art.get(i).map(String::as_str).unwrap_or(&empty);
+        let art_line = art
+            .get(i)
+            .map(String::as_str)
+            .unwrap_or(r#"                                               "#);
         let info_line = info.get(i).map(String::as_str).unwrap_or(EMPTY);
         println!(" {} {}", art_line, info_line);
     }
@@ -46,7 +46,7 @@ pub fn fetch_device(
 /// Returns a vector of formatted strings representing the device info,
 /// including extra vendor-specific and general device limits.
 /// Lines for optional fields are only included if available.
-fn get_device_info(device: &PhysicalDevice, color: &str) -> Vec<String> {
+fn get_device_info(device: &Device, color: &str) -> Vec<String> {
     let mut lines = Vec::new();
 
     let title = format!(
@@ -188,39 +188,18 @@ fn get_device_info(device: &PhysicalDevice, color: &str) -> Vec<String> {
                 .into()
         )
     ));
+
+    let checkbox = |b: bool| if b { "[x]" } else { "[ ]" };
+    let x = checkbox(device.characteristics.supports_ray_tracing);
+    let y = checkbox(device.characteristics.dedicated_transfer_queue);
+    let z = checkbox(device.characteristics.dedicated_async_compute_queue);
+
     lines.push(format!(
-        "{} | {} | {}",
-        format!(
-            "{}{}Raytracing{}: {}",
-            ALIGNMENT,
-            color,
-            RESET,
-            if device.characteristics.supports_ray_tracing {
-                "[x]"
-            } else {
-                "[ ]"
-            },
-        ),
-        format!(
-            "{}Dedicated Transfer Queue{}: {}",
-            color,
-            RESET,
-            if device.characteristics.supports_ray_tracing {
-                "[x]"
-            } else {
-                "[ ]"
-            },
-        ),
-        format!(
-            "{}Dedicated Async Compute Queue{}: {}",
-            color,
-            RESET,
-            if device.characteristics.supports_ray_tracing {
-                "[x]"
-            } else {
-                "[ ]"
-            },
-        ),
+        "{}{}Raytracing{}: {} | {}Dedicated Transfer Queue{}: {} | {}Dedicated Async Compute Queue{}: {}",
+        ALIGNMENT,
+        color, RESET, x,
+        color, RESET, y,
+        color, RESET, z,
     ));
 
     lines
@@ -247,7 +226,7 @@ fn format_bytes(bytes: u64) -> String {
 }
 
 /// Iterates through API versions and prints info for every physical device
-pub fn iterate_devices() {
+pub fn iterate_devices() -> Result<(), Box<dyn Error>> {
     let entry = {
         #[cfg(not(feature = "loaded"))]
         {
@@ -259,7 +238,7 @@ pub fn iterate_devices() {
                 Ok(entry) => entry,
                 Err(e) => {
                     eprintln!("Failed to load entry: {:?}", e);
-                    return;
+                    return Ok(());
                 }
             }
         }
@@ -277,32 +256,32 @@ pub fn iterate_devices() {
         };
         let create_info = vk::InstanceCreateInfo::default().application_info(&app_info);
 
-        let instance = match unsafe { entry.create_instance(&create_info, None) } {
-            Ok(instance) => instance,
+        match unsafe { entry.create_instance(&create_info, None) } {
+            Ok(instance) => match unsafe { instance.enumerate_physical_devices() } {
+                Ok(devices) => {
+                    for device in devices {
+                        fetch_device(&instance, device)?;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to enumerate physical devices: {:?}", e);
+                }
+            },
             Err(e) => {
                 eprintln!("Failed to create instance: {:?}", e);
                 continue;
             }
         };
 
-        match unsafe { instance.enumerate_physical_devices() } {
-            Ok(devices) => {
-                for device in devices {
-                    fetch_device(&instance, device);
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to enumerate physical devices: {:?}", e);
-            }
-        }
         break;
     }
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::{GPUCharacteristics, PhysicalDevice};
+    use crate::device::{Device, GPUCharacteristics};
     use crate::vendor::Vendor;
 
     /// For testing purposes we use the Unknown vendor variant.
@@ -313,8 +292,8 @@ mod tests {
     }
 
     /// Creates a dummy PhysicalDevice instance for tests.
-    fn dummy_physical_device() -> PhysicalDevice {
-        PhysicalDevice {
+    fn dummy_physical_device() -> Device {
+        Device {
             vendor: Vendor::dummy(),
             device_name: "TestDevice".to_string(),
             device_type: crate::device::DeviceType::DiscreteGPU,

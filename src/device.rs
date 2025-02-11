@@ -10,7 +10,7 @@ use crate::vendor::Vendor;
 
 /// Represents a physical GPU device.
 #[derive(Debug)]
-pub struct PhysicalDevice {
+pub struct Device {
     pub vendor: Vendor,
     pub device_name: String,
     pub device_type: DeviceType,
@@ -53,7 +53,7 @@ pub struct GPUCharacteristics {
     pub supports_ray_tracing: bool,
 }
 
-impl PhysicalDevice {
+impl Device {
     /// Constructs a new `PhysicalDevice` by querying Vulkan properties.
     pub fn new(instance: &Instance, physical_device: vk::PhysicalDevice) -> Self {
         // Get the core properties and limits.
@@ -214,7 +214,7 @@ impl PhysicalDevice {
             }
         };
 
-        PhysicalDevice {
+        Device {
             vendor,
             device_name,
             device_type,

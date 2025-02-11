@@ -26,6 +26,7 @@
             llvmPackages.bintools
             rustup
             git
+            rustfmt
             vulkan-loader
           ];
 
