@@ -1,4 +1,8 @@
 use ash::vk;
+use ash::vk::PhysicalDeviceProperties2;
+use ash::vk::PhysicalDeviceShaderCoreProperties2AMD;
+use ash::vk::PhysicalDeviceShaderCorePropertiesAMD;
+use ash::vk::PhysicalDeviceShaderSMBuiltinsPropertiesNV;
 use ash::Instance;
 use std::ffi::CStr;
 
@@ -39,10 +43,14 @@ pub struct GPUCharacteristics {
     // NVIDIA-specific properties.
     pub streaming_multiprocessors: Option<u32>,
     pub warps_per_sm: Option<u32>,
-    // General device limits (useful for performance and capability queries).
+    // General device limits.
     pub max_image_dimension_2d: u32,
     pub max_compute_shared_memory_size: u32,
     pub max_compute_work_group_invocations: u32,
+    // New feature flags.
+    pub dedicated_transfer_queue: bool,
+    pub dedicated_async_compute_queue: bool,
+    pub supports_ray_tracing: bool,
 }
 
 impl PhysicalDevice {
@@ -56,8 +64,8 @@ impl PhysicalDevice {
         // Query additional driver properties.
         let mut driver_properties: vk::PhysicalDeviceDriverProperties =
             vk::PhysicalDeviceDriverProperties::default();
-        let mut properties2: vk::PhysicalDeviceProperties2 =
-            vk::PhysicalDeviceProperties2::default().push_next(&mut driver_properties);
+        let mut properties2: PhysicalDeviceProperties2 =
+            PhysicalDeviceProperties2::default().push_next(&mut driver_properties);
         unsafe {
             instance.get_physical_device_properties2(physical_device, &mut properties2);
         }
@@ -111,6 +119,37 @@ impl PhysicalDevice {
             f32::NAN
         };
 
+        // Query queue family properties.
+        let queue_families =
+            unsafe { instance.get_physical_device_queue_family_properties(physical_device) };
+        let mut dedicated_transfer_queue = false;
+        let mut dedicated_async_compute_queue = false;
+        for qf in queue_families.iter() {
+            let flags = qf.queue_flags;
+            if flags.contains(vk::QueueFlags::TRANSFER)
+                && !(flags.contains(vk::QueueFlags::GRAPHICS)
+                    || flags.contains(vk::QueueFlags::COMPUTE))
+            {
+                dedicated_transfer_queue = true;
+            }
+            if flags.contains(vk::QueueFlags::COMPUTE) && !flags.contains(vk::QueueFlags::GRAPHICS)
+            {
+                dedicated_async_compute_queue = true;
+            }
+        }
+
+        // Check for ray tracing support via device extensions.
+        let extensions = unsafe {
+            instance
+                .enumerate_device_extension_properties(physical_device)
+                .unwrap_or_default()
+        };
+        let supports_ray_tracing = extensions.iter().any(|ext| {
+            let ext_name = unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) };
+            ext_name.to_str().unwrap_or("") == "VK_KHR_ray_tracing_pipeline"
+                || ext_name.to_str().unwrap_or("") == "VK_NV_ray_tracing"
+        });
+
         let mut characteristics = GPUCharacteristics {
             memory_pressure,
             // Vendor-specific fields start as None.
@@ -127,16 +166,18 @@ impl PhysicalDevice {
             max_image_dimension_2d: limits.max_image_dimension2_d,
             max_compute_shared_memory_size: limits.max_compute_shared_memory_size,
             max_compute_work_group_invocations: limits.max_compute_work_group_invocations,
+            // New features:
+            dedicated_transfer_queue,
+            dedicated_async_compute_queue,
+            supports_ray_tracing,
         };
 
         // Query vendor-specific properties.
         match vendor {
             Vendor::AMD => {
-                let mut shader_core_properties =
-                    vk::PhysicalDeviceShaderCorePropertiesAMD::default();
-                let mut shader_core_properties2 =
-                    vk::PhysicalDeviceShaderCoreProperties2AMD::default();
-                let mut amd_properties2 = vk::PhysicalDeviceProperties2::default()
+                let mut shader_core_properties = PhysicalDeviceShaderCorePropertiesAMD::default();
+                let mut shader_core_properties2 = PhysicalDeviceShaderCoreProperties2AMD::default();
+                let mut amd_properties2 = PhysicalDeviceProperties2::default()
                     .push_next(&mut shader_core_properties)
                     .push_next(&mut shader_core_properties2);
                 unsafe {
@@ -159,9 +200,9 @@ impl PhysicalDevice {
                 characteristics.wavefront_size = Some(shader_core_properties.wavefront_size);
             }
             Vendor::Nvidia => {
-                let mut sm_builtins = vk::PhysicalDeviceShaderSMBuiltinsPropertiesNV::default();
+                let mut sm_builtins = PhysicalDeviceShaderSMBuiltinsPropertiesNV::default();
                 let mut nv_properties2 =
-                    vk::PhysicalDeviceProperties2::default().push_next(&mut sm_builtins);
+                    PhysicalDeviceProperties2::default().push_next(&mut sm_builtins);
                 unsafe {
                     instance.get_physical_device_properties2(physical_device, &mut nv_properties2);
                 }
@@ -284,7 +325,6 @@ mod tests {
             max_image_dimension2_d: 8192,
             max_compute_shared_memory_size: 16384,
             max_compute_work_group_invocations: 1024,
-            // Other fields can use defaults.
             ..Default::default()
         };
 
@@ -303,6 +343,9 @@ mod tests {
             max_image_dimension_2d: limits.max_image_dimension2_d,
             max_compute_shared_memory_size: limits.max_compute_shared_memory_size,
             max_compute_work_group_invocations: limits.max_compute_work_group_invocations,
+            dedicated_transfer_queue: false,
+            dedicated_async_compute_queue: false,
+            supports_ray_tracing: false,
         };
 
         assert_eq!(characteristics.max_image_dimension_2d, 8192);
