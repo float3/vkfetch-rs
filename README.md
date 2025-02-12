@@ -55,7 +55,7 @@ https://vulkan.lunarg.com/sdk/home#linux
 
 ### windows and mac
 
-https://vulkan.lunarg.com/sdk/home#linux
+https://vulkan.lunarg.com/sdk/home
 
 ## vkfetch-rs
 
