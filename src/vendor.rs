@@ -90,7 +90,7 @@ impl Vendor {
     }
 
     /// Returns a human-readable name for the vendor.
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Vendor::AMD => "AMD",
             Vendor::Apple => "Apple",
@@ -136,7 +136,7 @@ impl Vendor {
         }
     }
 
-    fn get_alternative_style(&self) -> [&str; LUT_SIZE] {
+    pub const fn get_alternative_style(&self) -> [&str; LUT_SIZE] {
         match self {
             Vendor::AMD => AMD_STYLE_ALT,
             Vendor::Apple => APPLE_STYLE_ALT,

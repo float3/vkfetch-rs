@@ -28,8 +28,14 @@ pub fn fetch_device(
         .unwrap_or_else(|| panic!("unknown vendor: {}", properties.vendor_id));
     let art = vendor.get_ascii_art();
 
-    let device = Device::new(instance, device_handle);
-    let info = get_device_info(&device, vendor.get_style()[0]);
+    let info = get_device_info(
+        &Device::new(instance, device_handle),
+        (if is_ansi_supported() {
+            vendor.get_alternative_style()
+        } else {
+            vendor.get_style()
+        })[0],
+    );
 
     let _ = enable_virtual_terminal_processing();
 
