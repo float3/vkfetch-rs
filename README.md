@@ -73,3 +73,7 @@ git clone https://github.com/float3/vkfetch-rs
 cd vkfetch-rs
 cargo build
 ```
+
+
+# TODO
+don't do ansi codes if stdout is a file
