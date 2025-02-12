@@ -16,3 +16,5 @@ loaded = ["ash/loaded"]
 
 [dependencies]
 ash = { version = "0.38.0", default-features = false, features = ["std"] }
+atty = "0.2.14"
+winapi = "0.3.9"

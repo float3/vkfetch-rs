@@ -1,4 +1,4 @@
-use crate::ascii_art::*;
+use crate::{ascii_art::*, is_ansi_supported};
 
 /// Represents a GPU vendor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,11 +47,14 @@ impl Vendor {
             | Vendor::MobileEye => VULKAN,
         };
 
-        let styles = self.get_styles();
-
+        let style = if is_ansi_supported() {
+            self.get_alternative_style()
+        } else {
+            self.get_style()
+        };
         let mut modified_art: Vec<String> = art.iter().map(|&line| line.to_string()).collect();
 
-        for (symbol, style) in CHARS.iter().zip(styles.iter()) {
+        for (symbol, style) in CHARS.iter().zip(style.iter()) {
             if !style.is_empty() {
                 modified_art = modified_art
                     .iter()
@@ -64,7 +67,7 @@ impl Vendor {
     }
 
     /// Returns an array of style strings associated with the vendor.
-    pub const fn get_styles(&self) -> [&str; LUT_SIZE] {
+    pub const fn get_style(&self) -> [&str; LUT_SIZE] {
         match self {
             Vendor::AMD => AMD_STYLE,
             Vendor::Apple => APPLE_STYLE,
@@ -132,6 +135,28 @@ impl Vendor {
             _ => None,
         }
     }
+
+    fn get_alternative_style(&self) -> [&str; LUT_SIZE] {
+        match self {
+            Vendor::AMD => AMD_STYLE_ALT,
+            Vendor::Apple => APPLE_STYLE_ALT,
+            Vendor::ARM => ARM_STYLE_ALT,
+            Vendor::Google => GOOGLE_STYLE_ALT,
+            Vendor::Intel => INTEL_STYLE_ALT,
+            Vendor::Nvidia => NVIDIA_STYLE_ALT,
+            Vendor::Microsoft => MICROSOFT_STYLE_ALT,
+            Vendor::Qualcomm => QUALCOMM_STYLE_ALT,
+            Vendor::Mesa => VULKAN_STYLE_ALT,
+            Vendor::Unknown
+            | Vendor::ImgTec
+            | Vendor::VIV
+            | Vendor::VSI
+            | Vendor::Kazan
+            | Vendor::Codeplay
+            | Vendor::Pocl
+            | Vendor::MobileEye => VULKAN_STYLE_ALT,
+        }
+    }
 }
 
 impl From<Vendor> for u32 {
@@ -177,7 +202,7 @@ mod tests {
     #[test]
     fn test_get_styles_length() {
         let vendor = Vendor::AMD;
-        let styles = vendor.get_styles();
+        let styles = vendor.get_style();
         assert_eq!(styles.len(), crate::ascii_art::LUT_SIZE);
     }
 
@@ -187,7 +212,7 @@ mod tests {
         let art = vendor.get_ascii_art();
         assert!(!art.is_empty(), "ASCII art should not be empty");
 
-        let styles = vendor.get_styles();
+        let styles = vendor.get_style();
         let non_empty_style = styles.iter().any(|s| !s.is_empty());
         if non_empty_style {
             let block_found = art.iter().any(|line| line.contains(BLOCK));

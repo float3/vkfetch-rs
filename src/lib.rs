@@ -6,6 +6,7 @@ use ash::{self, vk, Entry, Instance};
 use device::Device;
 use std::error::Error;
 use vendor::Vendor;
+use vt::enable_virtual_terminal_processing;
 
 const BOLD: &str = "\x1B[1m";
 const RESET: &str = "\x1B[0m";
@@ -28,7 +29,9 @@ pub fn fetch_device(
     let art = vendor.get_ascii_art();
 
     let device = Device::new(instance, device_handle);
-    let info = get_device_info(&device, vendor.get_styles()[0]);
+    let info = get_device_info(&device, vendor.get_style()[0]);
+
+    let _ = enable_virtual_terminal_processing();
 
     for i in 0..art.len().max(info.len()) {
         let art_line = art
@@ -276,6 +279,70 @@ pub fn iterate_devices() -> Result<(), Box<dyn Error>> {
         break;
     }
     Ok(())
+}
+
+#[cfg(windows)]
+mod vt {
+    use std::io::{Error, Result};
+    use winapi::um::consoleapi::{GetConsoleMode, SetConsoleMode};
+    use winapi::um::handleapi::INVALID_HANDLE_VALUE;
+    use winapi::um::processenv::GetStdHandle;
+    use winapi::um::winbase::STD_OUTPUT_HANDLE;
+    use winapi::um::wincon::ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+    /// Enables Virtual Terminal Processing on Windows.
+    pub fn enable_virtual_terminal_processing() -> Result<()> {
+        unsafe {
+            let std_out = GetStdHandle(STD_OUTPUT_HANDLE);
+            if std_out == INVALID_HANDLE_VALUE {
+                return Err(Error::last_os_error());
+            }
+            let mut mode = 0;
+            if GetConsoleMode(std_out, &mut mode) == 0 {
+                return Err(Error::last_os_error());
+            }
+            mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            if SetConsoleMode(std_out, mode) == 0 {
+                return Err(Error::last_os_error());
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks if Virtual Terminal Processing is enabled.
+    pub fn is_vt_enabled() -> bool {
+        unsafe {
+            let std_out = GetStdHandle(STD_OUTPUT_HANDLE);
+            if std_out == INVALID_HANDLE_VALUE {
+                return false;
+            }
+            let mut mode = 0;
+            if GetConsoleMode(std_out, &mut mode) == 0 {
+                return false;
+            }
+            (mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0
+        }
+    }
+}
+
+#[cfg(not(windows))]
+mod vt {
+    use std::io::Result;
+
+    /// On non‑Windows platforms, VT processing is typically enabled by default.
+    pub fn enable_virtual_terminal_processing() -> Result<()> {
+        Ok(())
+    }
+
+    /// Assume ANSI escape codes are supported.
+    pub fn is_vt_enabled() -> bool {
+        true
+    }
+}
+
+/// Returns `true` if stdout is a TTY and (on Windows) VT processing is enabled.
+fn is_ansi_supported() -> bool {
+    atty::is(atty::Stream::Stdout) && vt::is_vt_enabled()
 }
 
 #[cfg(test)]
