@@ -4,12 +4,17 @@ pub mod vendor;
 
 use ash::{self, vk, Entry, Instance};
 use device::Device;
-use std::error::Error;
+use std::{
+    error::Error,
+    io::{self, Write},
+};
 use vendor::Vendor;
 use vt::enable_virtual_terminal_processing;
 
 const BOLD: &str = "\x1B[1m";
 const RESET: &str = "\x1B[0m";
+const WRAP_OFF: &str = "\x1B[?7l";
+const WRAP_ON: &str = "\x1B[?7h";
 const ALIGNMENT: &str = "    ";
 const EMPTY: &str = "";
 
@@ -45,7 +50,17 @@ pub fn fetch_device(
             .map(String::as_str)
             .unwrap_or(r#"                                               "#);
         let info_line = info.get(i).map(String::as_str).unwrap_or(EMPTY);
+
+        if is_ansi_supported() {
+            print!("{}", WRAP_OFF);
+            io::stdout().flush()?;
+        }
+
         println!(" {} {}", art_line, info_line);
+    }
+    if is_ansi_supported() {
+        print!("{}", WRAP_ON);
+        io::stdout().flush()?;
     }
 
     println!();
@@ -348,7 +363,7 @@ mod vt {
 
 /// Returns `true` if stdout is a TTY and (on Windows) VT processing is enabled.
 fn is_ansi_supported() -> bool {
-    atty::is(atty::Stream::Stdout) && vt::is_vt_enabled()
+    std::io::IsTerminal::is_terminal(&std::io::stdout()) && vt::is_vt_enabled()
 }
 
 #[cfg(test)]
