@@ -3,7 +3,6 @@ name: CI
 permissions:
   pages: write
   id-token: write
-
 on:
   push:
     branches: [ master ]
@@ -12,60 +11,62 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        rust: [stable, beta, nightly]
-
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        rust: [ stable, beta, nightly ]
+    runs-on: ${{ matrix.os }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
 
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
-        components: rustfmt, clippy
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
 
-    - name: Cache Cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-registry-
+      - name: Cache Cargo registry
+        if: runner.os != 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
 
-    - name: Dependencies
-      run: |
-        wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
-        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
-        sudo apt update
-        sudo apt install vulkan-sdk
+      - name: Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
+          sudo apt update
+          sudo apt install vulkan-sdk
 
-    - run: cargo build --verbose --workspace --all-targets --all-features
-    - run: cargo check --verbose --workspace --all-targets --all-features
-    - run: cargo clippy --verbose --workspace --all-targets --all-features -- -D warnings
-    - run: cargo fmt --all -- --check
-    - run: cargo test --verbose --workspace --all-targets --all-features --no-fail-fast --lib --bins --examples --tests --benches
-    - run: git diff --exit-code
+      - run: cargo build --verbose --workspace --all-targets --all-features
+      - run: cargo check --verbose --workspace --all-targets --all-features
+      - run: cargo clippy --verbose --workspace --all-targets --all-features -- -D warnings
+      - run: cargo fmt --all -- --check
+      - run: cargo test --verbose --workspace --all-targets --all-features --no-fail-fast --lib --bins --examples --tests --benches
+      - run: git diff --exit-code
 
-    - name: Generate cargo docs
-      if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
-      run: cargo doc --workspace --no-deps
+      - name: Generate cargo docs
+        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+        run: cargo doc --workspace --no-deps
 
-    - name: Upload artifact
-      if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: "./target/doc"
+      - name: Upload artifact
+        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./target/doc"
 
-    - name: Deploy to GitHub Pages
-      if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+        id: deployment
+        uses: actions/deploy-pages@v4
