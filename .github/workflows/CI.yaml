@@ -48,25 +48,43 @@ jobs:
           sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
           sudo apt update
           sudo apt install vulkan-sdk
-
+     
+      - name: Dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install vulkan-loader
+                  
+      - name: Dependencies
+        if: runner.os == 'Windows'
+        run: |
+          $SDK_VERSION = Invoke-RestMethod -Uri https://vulkan.lunarg.com/sdk/latest/windows.txt
+          Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$SDK_VERSION/windows/vulkan_sdk.exe -OutFile vulkan_sdk.exe
+          Start-Process -FilePath vulkan_sdk.exe -ArgumentList "/S" -Wait
+                  
+      - run: cargo build --verbose --workspace --all-targets
+      - run: cargo check --verbose --workspace --all-targets
+      - run: cargo clippy --verbose --workspace --all-targets -- -D warnings
+      - run: cargo fmt --all -- --check
+      - run: cargo test --verbose --workspace --all-targets --no-fail-fast --lib --bins --examples --tests --benches
       - run: cargo build --verbose --workspace --all-targets --all-features
       - run: cargo check --verbose --workspace --all-targets --all-features
       - run: cargo clippy --verbose --workspace --all-targets --all-features -- -D warnings
       - run: cargo fmt --all -- --check
       - run: cargo test --verbose --workspace --all-targets --all-features --no-fail-fast --lib --bins --examples --tests --benches
       - run: git diff --exit-code
-
+                  
       - name: Generate cargo docs
         if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
         run: cargo doc --workspace --no-deps
-
+                  
       - name: Upload artifact
         if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./target/doc"
-
+        
       - name: Deploy to GitHub Pages
         if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
         id: deployment
         uses: actions/deploy-pages@v4
+        
