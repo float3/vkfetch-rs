@@ -52,7 +52,10 @@ jobs:
       - name: Dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install vulkan-loader
+          SDK_VERSION=$(curl -s https://vulkan.lunarg.com/sdk/latest/mac.txt)
+          curl -O https://sdk.lunarg.com/sdk/download/${SDK_VERSION}/mac/vulkan_sdk.zip
+          unzip vulkan_sdk.zip -d vulkan_sdk
+          sudo installer -pkg vulkan_sdk/vulkan_sdk.pkg -target /
                   
       - name: Dependencies
         if: runner.os == 'Windows'
