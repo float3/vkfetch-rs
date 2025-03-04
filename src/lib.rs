@@ -2,7 +2,7 @@ pub mod ascii_art;
 pub mod device;
 pub mod vendor;
 
-use ash::{self, vk, Entry, Instance};
+use ash::{self, Entry, Instance, vk};
 use device::Device;
 use std::{
     error::Error,
