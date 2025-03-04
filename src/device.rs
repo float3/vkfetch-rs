@@ -1,9 +1,9 @@
+use ash::Instance;
 use ash::vk;
 use ash::vk::PhysicalDeviceProperties2;
 use ash::vk::PhysicalDeviceShaderCoreProperties2AMD;
 use ash::vk::PhysicalDeviceShaderCorePropertiesAMD;
 use ash::vk::PhysicalDeviceShaderSMBuiltinsPropertiesNV;
-use ash::Instance;
 use std::ffi::CStr;
 
 use crate::vendor::Vendor;
