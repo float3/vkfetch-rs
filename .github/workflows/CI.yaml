@@ -63,6 +63,8 @@ jobs:
           $SDK_VERSION = Invoke-RestMethod -Uri https://vulkan.lunarg.com/sdk/latest/windows.txt
           Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$SDK_VERSION/windows/vulkan_sdk.exe -OutFile vulkan_sdk.exe
           Start-Process -FilePath "vulkan_sdk.exe" -ArgumentList "in", "--al", "--confirm-command" -Wait
+          $env:LIB += ";$env:VULKAN_SDK\Lib"
+          echo "LIB=$env:LIB" >> $env:GITHUB_ENV
                   
       - run: cargo build --verbose --workspace --all-targets
       - run: cargo check --verbose --workspace --all-targets
@@ -77,11 +79,11 @@ jobs:
       - run: git diff --exit-code
                   
       - name: Generate cargo docs
-        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' && runner.os == 'Linux' }}
         run: cargo doc --workspace --no-deps
                   
       - name: Upload artifact
-        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' && runner.os == 'Linux' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./target/doc"
