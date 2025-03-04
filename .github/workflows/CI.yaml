@@ -92,7 +92,7 @@ jobs:
           path: "./target/doc"
         
       - name: Deploy to GitHub Pages
-        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' }}
+        if: ${{ github.event_name == 'push' && matrix.rust == 'stable' && runner.os == 'Linux' }}
         id: deployment
         uses: actions/deploy-pages@v4
         
