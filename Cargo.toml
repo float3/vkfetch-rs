@@ -15,5 +15,11 @@ default = ["ash/linked"]
 loaded = ["ash/loaded"]
 
 [dependencies]
-winapi = { version = "0.3.9", default-features = false }
 ash = { version = "0.38.0", default-features = false, features = ["std"] }
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3.9", default-features = false, features = [
+    "handleapi",
+    "consoleapi",
+    "processenv",
+    "winbase",
+] }
