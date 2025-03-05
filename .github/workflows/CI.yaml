@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest , windows-latest] #, macos-latest ]
+        os: [ ubuntu-latest , windows-latest , macos-latest ]
         rust: [ stable, beta, nightly ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -50,12 +50,13 @@ jobs:
           sudo apt install vulkan-sdk
      
       - name: Dependencies
-        if: runner.os == 'macOS'
+        if: runner.os == 'macos'
         run: |
-          SDK_VERSION=$(curl -s https://vulkan.lunarg.com/sdk/latest/mac.txt)
-          curl -O https://sdk.lunarg.com/sdk/download/${SDK_VERSION}/mac/vulkan_sdk.zip
-          unzip vulkan_sdk.zip -d vulkan_sdk
-          sudo installer -pkg ./vulkan_sdk/InstallVulkan-${SDK_VERSION}.app/Contents/Resources/installer.dat -target /
+          curl -L -o vulkansdk-macos.dmg https://sdk.lunarg.com/sdk/download/1.3.290.0/mac/vulkansdk-macos-1.3.290.0.dmg
+          hdiutil attach vulkansdk-macos.dmg
+          sudo installer -pkg /Volumes/vulkansdk-macos-1.3.290.0/VulkanSDK.pkg -target /
+          hdiutil detach /Volumes/vulkansdk-macos-1.3.290.0
+          echo "VULKAN_SDK=/usr/local/vulkansdk/1.3.290.0" >> $GITHUB_ENV
                   
       - name: Dependencies
         if: runner.os == 'Windows'
