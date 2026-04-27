@@ -1,6 +1,8 @@
-use crate::{ascii_art::*, is_ansi_supported};
+use crate::ascii_art::*;
 
 /// Represents a GPU vendor.
+#[allow(clippy::upper_case_acronyms)]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Vendor {
     AMD = 0x1002,
@@ -20,6 +22,7 @@ pub enum Vendor {
     Mesa = 0x10005,
     Pocl = 0x10006,
     MobileEye = 0x10007,
+    QualcommPartner = 0x4D4F4351,
 }
 
 const BLOCK: &str = "\x1B[7m \x1B[0m";
@@ -27,7 +30,34 @@ const BLOCK: &str = "\x1B[7m \x1B[0m";
 impl Vendor {
     /// Returns the vendor-specific ASCII art with color styling applied.
     pub fn get_ascii_art(&self) -> Vec<String> {
-        let art: &[&str] = match self {
+        self.get_ascii_art_with_ansi(crate::is_ansi_supported())
+    }
+
+    pub(crate) fn get_ascii_art_with_ansi(&self, use_ansi: bool) -> Vec<String> {
+        let width = self.ascii_art_width();
+        self.raw_ascii_art()
+            .iter()
+            .map(|line| {
+                let line = format!("{line:<width$}");
+                if use_ansi {
+                    self.style_ascii_line(&line)
+                } else {
+                    line
+                }
+            })
+            .collect()
+    }
+
+    pub(crate) fn ascii_art_width(&self) -> usize {
+        self.raw_ascii_art()
+            .iter()
+            .map(|line| line.len())
+            .max()
+            .unwrap_or(0)
+    }
+
+    const fn raw_ascii_art(&self) -> &'static [&'static str] {
+        match self {
             Vendor::AMD => AMD,
             Vendor::Apple => APPLE,
             Vendor::ARM => ARM,
@@ -35,7 +65,7 @@ impl Vendor {
             Vendor::Intel => INTEL,
             Vendor::Nvidia => NVIDIA,
             Vendor::Microsoft => MICROSOFT,
-            Vendor::Qualcomm => QUALCOMM,
+            Vendor::Qualcomm | Vendor::QualcommPartner => QUALCOMM,
             Vendor::Mesa => VULKAN,
             Vendor::Unknown
             | Vendor::ImgTec
@@ -45,25 +75,20 @@ impl Vendor {
             | Vendor::Codeplay
             | Vendor::Pocl
             | Vendor::MobileEye => VULKAN,
-        };
+        }
+    }
 
-        let style = if is_ansi_supported() {
-            self.get_alternative_style()
-        } else {
-            self.get_style()
-        };
-        let mut modified_art: Vec<String> = art.iter().map(|&line| line.to_string()).collect();
+    fn style_ascii_line(&self, line: &str) -> String {
+        let style = self.get_alternative_style();
+        let mut modified_line = line.to_string();
 
         for (symbol, style) in CHARS.iter().zip(style.iter()) {
             if !style.is_empty() {
-                modified_art = modified_art
-                    .iter()
-                    .map(|line| line.replace(*symbol, &format!("{}{}", style, BLOCK)))
-                    .collect();
+                modified_line = modified_line.replace(*symbol, &format!("{style}{BLOCK}"));
             }
         }
 
-        modified_art
+        modified_line
     }
 
     /// Returns an array of style strings associated with the vendor.
@@ -76,7 +101,7 @@ impl Vendor {
             Vendor::Intel => INTEL_STYLE,
             Vendor::Nvidia => NVIDIA_STYLE,
             Vendor::Microsoft => MICROSOFT_STYLE,
-            Vendor::Qualcomm => QUALCOMM_STYLE,
+            Vendor::Qualcomm | Vendor::QualcommPartner => QUALCOMM_STYLE,
             Vendor::Mesa => VULKAN_STYLE,
             Vendor::Unknown
             | Vendor::ImgTec
@@ -105,6 +130,7 @@ impl Vendor {
             Vendor::Nvidia => "Nvidia",
             Vendor::Pocl => "Pocl",
             Vendor::Qualcomm => "Qualcomm",
+            Vendor::QualcommPartner => "QualcommPartner",
             Vendor::Unknown => "Unknown",
             Vendor::VIV => "VIV",
             Vendor::VSI => "VSI",
@@ -132,7 +158,32 @@ impl Vendor {
             0x10005 => Some(Vendor::Mesa),
             0x10006 => Some(Vendor::Pocl),
             0x10007 => Some(Vendor::MobileEye),
+            0x4D4F4351 => Some(Vendor::QualcommPartner),
             _ => None,
+        }
+    }
+
+    pub const fn from_vendor_id_or_unknown(id: u32) -> Self {
+        match id {
+            0x1002 => Vendor::AMD,
+            0x1010 => Vendor::ImgTec,
+            0x106B => Vendor::Apple,
+            0x10DE => Vendor::Nvidia,
+            0x13B5 => Vendor::ARM,
+            0x1414 => Vendor::Microsoft,
+            0x1AE0 => Vendor::Google,
+            0x5143 => Vendor::Qualcomm,
+            0x8086 => Vendor::Intel,
+            0xFFFF => Vendor::Unknown,
+            0x10001 => Vendor::VIV,
+            0x10002 => Vendor::VSI,
+            0x10003 => Vendor::Kazan,
+            0x10004 => Vendor::Codeplay,
+            0x10005 => Vendor::Mesa,
+            0x10006 => Vendor::Pocl,
+            0x10007 => Vendor::MobileEye,
+            0x4D4F4351 => Vendor::QualcommPartner,
+            _ => Vendor::Unknown,
         }
     }
 
@@ -145,7 +196,7 @@ impl Vendor {
             Vendor::Intel => INTEL_STYLE_ALT,
             Vendor::Nvidia => NVIDIA_STYLE_ALT,
             Vendor::Microsoft => MICROSOFT_STYLE_ALT,
-            Vendor::Qualcomm => QUALCOMM_STYLE_ALT,
+            Vendor::Qualcomm | Vendor::QualcommPartner => QUALCOMM_STYLE_ALT,
             Vendor::Mesa => VULKAN_STYLE_ALT,
             Vendor::Unknown
             | Vendor::ImgTec
@@ -165,7 +216,7 @@ impl From<Vendor> for u32 {
     }
 }
 
-/// Allows a vendor to be printed using its human‑readable name.
+/// Allows a vendor to be printed using its human-readable name.
 impl std::fmt::Display for Vendor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name())
@@ -181,7 +232,12 @@ mod tests {
         assert_eq!(Vendor::from_vendor_id(0x1002), Some(Vendor::AMD));
         assert_eq!(Vendor::from_vendor_id(0x1010), Some(Vendor::ImgTec));
         assert_eq!(Vendor::from_vendor_id(0x10DE), Some(Vendor::Nvidia));
+        assert_eq!(
+            Vendor::from_vendor_id(0x4D4F4351),
+            Some(Vendor::QualcommPartner)
+        );
         assert_eq!(Vendor::from_vendor_id(0x9999), None);
+        assert_eq!(Vendor::from_vendor_id_or_unknown(0x9999), Vendor::Unknown);
     }
 
     #[test]
@@ -209,7 +265,7 @@ mod tests {
     #[test]
     fn test_get_ascii_art() {
         let vendor = Vendor::AMD;
-        let art = vendor.get_ascii_art();
+        let art = vendor.get_ascii_art_with_ansi(true);
         assert!(!art.is_empty(), "ASCII art should not be empty");
 
         let styles = vendor.get_style();
@@ -218,5 +274,12 @@ mod tests {
             let block_found = art.iter().any(|line| line.contains(BLOCK));
             assert!(block_found, "Styled block should appear in ASCII art lines");
         }
+    }
+
+    #[test]
+    fn test_get_ascii_art_without_ansi() {
+        let art = Vendor::AMD.get_ascii_art_with_ansi(false);
+        assert!(!art.iter().any(|line| line.contains("\x1B")));
+        assert!(art.iter().any(|line| line.contains('#')));
     }
 }

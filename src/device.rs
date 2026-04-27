@@ -20,7 +20,7 @@ pub struct Device {
     pub driver_info: String,
     pub api_version: String,
     // VRAM:
-    pub heapbudget: u64,
+    pub heapbudget: Option<u64>,
     pub heapsize: u64,
     pub characteristics: GPUCharacteristics,
 }
@@ -31,9 +31,10 @@ pub struct Device {
 #[derive(Debug)]
 pub struct GPUCharacteristics {
     /// Memory pressure as computed from VRAM usage (0.0 to 1.0)
-    pub memory_pressure: f32,
+    pub memory_pressure: Option<f32>,
     // AMD-specific properties.
     pub compute_units: Option<u32>,
+    pub active_compute_units: Option<u32>,
     pub shader_engines: Option<u32>,
     pub shader_arrays_per_engine_count: Option<u32>,
     pub compute_units_per_shader_array: Option<u32>,
@@ -71,10 +72,7 @@ impl Device {
         }
 
         let vendor_id = physical_device_properties.vendor_id;
-        let vendor = Vendor::from_vendor_id(vendor_id).unwrap_or_else(|| {
-            eprintln!("Unknown vendor: {}", vendor_id);
-            panic!();
-        });
+        let vendor = Vendor::from_vendor_id_or_unknown(vendor_id);
 
         let device_name = cstring_to_string(
             physical_device_properties
@@ -95,10 +93,14 @@ impl Device {
                 .unwrap_or(c"Unknown"),
         );
 
+        let extensions = unsafe {
+            instance
+                .enumerate_device_extension_properties(physical_device)
+                .unwrap_or_default()
+        };
+
         // Query VRAM details.
-        let mut memory_budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
-        let mut memory_properties2 =
-            vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut memory_budget);
+        let mut memory_properties2 = vk::PhysicalDeviceMemoryProperties2::default();
         unsafe {
             instance
                 .get_physical_device_memory_properties2(physical_device, &mut memory_properties2);
@@ -112,12 +114,29 @@ impl Device {
             })
             .unwrap_or(0);
         let heapsize = memory_properties.memory_heaps[vram_heap_index as usize].size;
-        let heapbudget = memory_budget.heap_budget[vram_heap_index as usize];
-        let memory_pressure = if heapbudget > 0 {
-            (heapsize - heapbudget) as f32 / heapsize as f32
+
+        let heapbudget = if has_extension(&extensions, vk::EXT_MEMORY_BUDGET_NAME) {
+            let mut memory_budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
+            let mut memory_properties2 =
+                vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut memory_budget);
+            unsafe {
+                instance.get_physical_device_memory_properties2(
+                    physical_device,
+                    &mut memory_properties2,
+                );
+            }
+            Some(memory_budget.heap_budget[vram_heap_index as usize])
         } else {
-            f32::NAN
+            None
         };
+
+        let memory_pressure = heapbudget.and_then(|budget| {
+            if heapsize > 0 && budget <= heapsize {
+                Some((heapsize - budget) as f32 / heapsize as f32)
+            } else {
+                None
+            }
+        });
 
         // Query queue family properties.
         let queue_families =
@@ -139,21 +158,14 @@ impl Device {
         }
 
         // Check for ray tracing support via device extensions.
-        let extensions = unsafe {
-            instance
-                .enumerate_device_extension_properties(physical_device)
-                .unwrap_or_default()
-        };
-        let supports_ray_tracing = extensions.iter().any(|ext| {
-            let ext_name = unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) };
-            ext_name.to_str().unwrap_or("") == "VK_KHR_ray_tracing_pipeline"
-                || ext_name.to_str().unwrap_or("") == "VK_NV_ray_tracing"
-        });
+        let supports_ray_tracing = has_extension(&extensions, vk::KHR_RAY_TRACING_PIPELINE_NAME)
+            || has_extension(&extensions, vk::NV_RAY_TRACING_NAME);
 
         let mut characteristics = GPUCharacteristics {
             memory_pressure,
             // Vendor-specific fields start as None.
             compute_units: None,
+            active_compute_units: None,
             shader_engines: None,
             shader_arrays_per_engine_count: None,
             compute_units_per_shader_array: None,
@@ -174,20 +186,18 @@ impl Device {
 
         // Query vendor-specific properties.
         match vendor {
-            Vendor::AMD => {
+            Vendor::AMD if has_extension(&extensions, vk::AMD_SHADER_CORE_PROPERTIES_NAME) => {
                 let mut shader_core_properties = PhysicalDeviceShaderCorePropertiesAMD::default();
-                let mut shader_core_properties2 = PhysicalDeviceShaderCoreProperties2AMD::default();
-                let mut amd_properties2 = PhysicalDeviceProperties2::default()
-                    .push_next(&mut shader_core_properties)
-                    .push_next(&mut shader_core_properties2);
+                let mut amd_properties2 =
+                    PhysicalDeviceProperties2::default().push_next(&mut shader_core_properties);
                 unsafe {
                     instance.get_physical_device_properties2(physical_device, &mut amd_properties2);
                 }
-                characteristics.compute_units = Some(
-                    shader_core_properties.shader_engine_count
-                        * shader_core_properties.shader_arrays_per_engine_count
-                        * shader_core_properties.compute_units_per_shader_array,
-                );
+                characteristics.compute_units = Some(total_amd_compute_units(
+                    shader_core_properties.shader_engine_count,
+                    shader_core_properties.shader_arrays_per_engine_count,
+                    shader_core_properties.compute_units_per_shader_array,
+                ));
                 characteristics.shader_engines = Some(shader_core_properties.shader_engine_count);
                 characteristics.shader_arrays_per_engine_count =
                     Some(shader_core_properties.shader_arrays_per_engine_count);
@@ -198,8 +208,21 @@ impl Device {
                 characteristics.wavefronts_per_simd =
                     Some(shader_core_properties.wavefronts_per_simd);
                 characteristics.wavefront_size = Some(shader_core_properties.wavefront_size);
+
+                if has_extension(&extensions, vk::AMD_SHADER_CORE_PROPERTIES2_NAME) {
+                    let mut shader_core_properties2 =
+                        PhysicalDeviceShaderCoreProperties2AMD::default();
+                    let mut amd_properties2 = PhysicalDeviceProperties2::default()
+                        .push_next(&mut shader_core_properties2);
+                    unsafe {
+                        instance
+                            .get_physical_device_properties2(physical_device, &mut amd_properties2);
+                    }
+                    characteristics.active_compute_units =
+                        Some(shader_core_properties2.active_compute_unit_count);
+                }
             }
-            Vendor::Nvidia => {
+            Vendor::Nvidia if has_extension(&extensions, vk::NV_SHADER_SM_BUILTINS_NAME) => {
                 let mut sm_builtins = PhysicalDeviceShaderSMBuiltinsPropertiesNV::default();
                 let mut nv_properties2 =
                     PhysicalDeviceProperties2::default().push_next(&mut sm_builtins);
@@ -230,7 +253,24 @@ impl Device {
     }
 }
 
+fn has_extension(extensions: &[vk::ExtensionProperties], extension_name: &CStr) -> bool {
+    extensions.iter().any(|extension| {
+        extension
+            .extension_name_as_c_str()
+            .is_ok_and(|name| name == extension_name)
+    })
+}
+
+fn total_amd_compute_units(
+    shader_engine_count: u32,
+    shader_arrays_per_engine_count: u32,
+    compute_units_per_shader_array: u32,
+) -> u32 {
+    shader_engine_count * shader_arrays_per_engine_count * compute_units_per_shader_array
+}
+
 /// Represents the type of device.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub enum DeviceType {
     Other = 0,
@@ -241,9 +281,9 @@ pub enum DeviceType {
     Unknown = 5,
 }
 
-impl DeviceType {
+impl From<i32> for DeviceType {
     /// Converts an integer ID (from Vulkan) into a DeviceType.
-    pub fn from(id: i32) -> Self {
+    fn from(id: i32) -> Self {
         match id {
             0 => DeviceType::Other,
             1 => DeviceType::IntegratedGPU,
@@ -253,8 +293,10 @@ impl DeviceType {
             _ => DeviceType::Unknown,
         }
     }
+}
 
-    /// Returns a human‑readable name.
+impl DeviceType {
+    /// Returns a human-readable name.
     pub fn name(&self) -> &'static str {
         match self {
             DeviceType::Other => "Other",
@@ -267,13 +309,14 @@ impl DeviceType {
     }
 }
 
-/// Decodes a Vulkan version number into a string of the form "variant.major.minor.patch".
+/// Decodes a Vulkan version number into a string of the form "major.minor.patch".
 pub fn decode_version_number(version: u32) -> String {
-    let variant = (version >> 29) & 0b111;
-    let major = (version >> 22) & 0b1111111;
-    let minor = (version >> 12) & 0b1111111111;
-    let patch = version & 0b111111111111;
-    format!("{}.{}.{}.{}", variant, major, minor, patch)
+    format!(
+        "{}.{}.{}",
+        vk::api_version_major(version),
+        vk::api_version_minor(version),
+        vk::api_version_patch(version)
+    )
 }
 
 /// Converts a CStr to a Rust String.
@@ -295,9 +338,9 @@ mod tests {
     #[test]
     fn test_decode_version_number() {
         // Simulate a Vulkan version: variant 0, version 1.2.3
-        let version: u32 = (1 << 22) | (2 << 12) | 3;
+        let version: u32 = vk::make_api_version(0, 1, 2, 3);
         let decoded = decode_version_number(version);
-        assert_eq!(decoded, "0.1.2.3");
+        assert_eq!(decoded, "1.2.3");
     }
 
     #[test]
@@ -319,6 +362,11 @@ mod tests {
     }
 
     #[test]
+    fn test_total_amd_compute_units() {
+        assert_eq!(total_amd_compute_units(2, 2, 10), 40);
+    }
+
+    #[test]
     fn test_gpu_characteristics_defaults() {
         // Create dummy limits.
         let limits = vk::PhysicalDeviceLimits {
@@ -330,8 +378,9 @@ mod tests {
 
         // Construct dummy GPUCharacteristics with only common limits.
         let characteristics = GPUCharacteristics {
-            memory_pressure: 0.5,
+            memory_pressure: Some(0.5),
             compute_units: None,
+            active_compute_units: None,
             shader_engines: None,
             shader_arrays_per_engine_count: None,
             compute_units_per_shader_array: None,
