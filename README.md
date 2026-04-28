@@ -56,4 +56,4 @@ cargo update
 
 ## Release
 
-Bump `package.version` in `Cargo.toml` and keep `Cargo.lock` in sync with `cargo update`. After that bump lands on `master` or `main`, CI runs the Rust and Nix checks, creates tag `vX.Y.Z`, and publishes a GitHub release with generated release notes.
+Bump `package.version` in `Cargo.toml` and keep `Cargo.lock` in sync with `cargo update`. After that bump lands on `master` or `main`, CI runs the Rust and Nix checks, creates tag `vX.Y.Z`, builds release executables with the dynamic-loading Vulkan feature, and publishes a GitHub release with generated release notes plus archives for Linux, Windows, and macOS.
