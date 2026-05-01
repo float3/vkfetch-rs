@@ -208,7 +208,7 @@ jobs:
         run: Compress-Archive -Path "dist/${env:ASSET_NAME}" -DestinationPath "${env:ASSET_NAME}.zip" -Force
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ASSET_NAME }}
           path: ${{ env.ASSET_NAME }}.${{ matrix.archive_ext }}
