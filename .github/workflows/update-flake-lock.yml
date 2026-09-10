@@ -1,0 +1,41 @@
+name: Update flake.lock
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-flake-lock
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update inputs and run the flake checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Update inputs
+        run: nix flake update
+
+      - name: Check
+        run: nix flake check --print-build-logs
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet flake.lock; then
+            echo "flake.lock is already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update flake.lock" flake.lock
+          git push
