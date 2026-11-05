@@ -1,16 +1,18 @@
-# vkfetch-rs
+# vkfetch
 
 [![CI](https://github.com/float3/vkfetch-rs/actions/workflows/CI.yaml/badge.svg)](https://github.com/float3/vkfetch-rs/actions/workflows/CI.yaml)
 
-`vkfetch-rs` prints Vulkan GPU information with vendor ASCII art. it is a Rust rewrite of [Wunkolo/vkfetch](https://github.com/Wunkolo/vkfetch), with the original art ported and a few extra device capability fields.
+`vkfetch` prints Vulkan GPU information with vendor ASCII art. it is a Rust rewrite of [Wunkolo/vkfetch](https://github.com/Wunkolo/vkfetch), with the original art ported and a few extra device capability fields.
 
 ## install
 
 you need a Vulkan loader at runtime.
 
 ```sh
-cargo install vkfetch-rs
+cargo install vkfetch
 ```
+
+up to 0.3.0 it was published as `vkfetch-rs`, with the command `vkfetch-rs`.
 
 ## build
 

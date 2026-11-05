@@ -159,8 +159,8 @@ jobs:
             archive_ext: tar.gz
             exe_suffix: ""
     env:
-      BIN_NAME: vkfetch-rs
-      ASSET_NAME: vkfetch-rs-${{ needs.release-metadata.outputs.tag }}-${{ matrix.asset_target }}
+      BIN_NAME: vkfetch
+      ASSET_NAME: vkfetch-${{ needs.release-metadata.outputs.tag }}-${{ matrix.asset_target }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -230,7 +230,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          pattern: vkfetch-rs-${{ needs.release-metadata.outputs.tag }}-*
+          pattern: vkfetch-${{ needs.release-metadata.outputs.tag }}-*
           path: dist
           merge-multiple: true
 
@@ -239,6 +239,6 @@ jobs:
         with:
           tag_name: ${{ needs.release-metadata.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: vkfetch-rs ${{ needs.release-metadata.outputs.tag }}
+          name: vkfetch ${{ needs.release-metadata.outputs.tag }}
           generate_release_notes: true
           files: dist/*

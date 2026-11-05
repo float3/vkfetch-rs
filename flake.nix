@@ -1,5 +1,5 @@
 {
-  description = "vkfetch-rs development environment";
+  description = "vkfetch development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

@@ -346,9 +346,9 @@ pub fn iterate_devices() -> Result<(), Box<dyn Error>> {
         vk::API_VERSION_1_0,
     ] {
         let app_info = vk::ApplicationInfo::default()
-            .application_name(c"vkfetch-rs")
+            .application_name(c"vkfetch")
             .application_version(package_version())
-            .engine_name(c"vkfetch-rs")
+            .engine_name(c"vkfetch")
             .engine_version(package_version())
             .api_version(api_version);
 
